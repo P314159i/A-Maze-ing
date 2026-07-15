@@ -1,0 +1,13 @@
+
+# mandatory keys
+WIDTH=20
+HEIGHT=18
+ENTRY=0,0
+EXIT=19,17
+OUTPUT_FILE=maze.txt
+PERFECT=False
+
+# optional keys
+# SEED=42
+# ALGORITHM=recursive_backtracker
+# DISPLAY_MODE=terminal
