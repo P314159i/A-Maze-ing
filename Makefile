@@ -1,4 +1,5 @@
 PYTHON := python3
+PIP := $(PYTHON) -m pip
 MAIN := a_maze_ing.py
 CONFIG ?= config.txt
 
@@ -10,7 +11,7 @@ debug:
 
 # need to create the requirements.txt file in the end
 install:
-    $(PYTHON) -m pip install -r requirements.txt
+    $(PIP) install -r requirements.txt
 
 lint:
     $(PYTHON) -m flake8 .
