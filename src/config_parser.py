@@ -19,6 +19,10 @@ import sys
 from dataclasses import dataclass
 
 
+class ConfigError(Exception):
+    """Raised when configuration data is invalid."""
+    pass
+
 @dataclass(frozen=True)
 class MazeConfig:
     """Store validated maze configuration values."""
@@ -33,6 +37,7 @@ class MazeConfig:
 
 
 if __name__ == "__main__":
+    # testing datamodel
     config = MazeConfig(
         width=20,
         height=18,
@@ -42,7 +47,13 @@ if __name__ == "__main__":
         perfect=False,
         seed=42,
     )
-
     print(config)
+
+    #testing ConfigError
+    try:
+        raise ConfigError("Testing config error")
+    except ConfigError as error:
+        print(error)
+
 
 
