@@ -2,7 +2,7 @@ import dataclasses
 from sys import exc_info
 import pytest
 
-from src.config_parser import ConfigError, MazeConfig
+from src.config_parser import ConfigError, MazeConfig, ConfigParser
 
 
 def test_maze_config_stores_value() -> None:
@@ -74,3 +74,20 @@ def test_config_error_message() -> None:
 
     with pytest.raises(ConfigError, match="^Invalid WIDTH$"):
         raise ConfigError("Invalid WIDTH")
+
+
+def test_clean_lines_trims_whitespace() -> None:
+    lines: list[str] = [
+        " WIDTH=20 \n",
+        "\tHEIGHT=19\t\n",
+        "\n",
+        " \t\r ENTRY=1,0   \n",
+        "# this is a comment.\n",
+    ]
+
+    result: list[str] = ConfigParser._strip_whitespace_and_comments(lines)
+    assert result == [
+        "WIDTH=20",
+        "HEIGHT=19",
+        "ENTRY=1,0",
+    ]
