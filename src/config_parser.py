@@ -17,6 +17,7 @@ import sys
 
 
 from dataclasses import dataclass
+from wsgiref.validate import ErrorWrapper
 
 
 class ConfigError(Exception):
@@ -76,6 +77,34 @@ class ConfigParser:
             cleaned_lines.append(trimmed_line)
 
         return cleaned_lines
+
+    @staticmethod
+    def _parse_lines(lines: list[str]) -> dict[str, str]:
+        keyvalues: dict[str, str] = {}
+        for line_num, line in enumerate(lines, start=1):
+            key, sep, value = line.partition("=")
+
+            if not sep:
+                raise ConfigError(
+                    f"Line {line_num}: expected: key=value."
+                    f"Please make sure the config file is correct."
+                )
+
+            key = key.strip()
+            value = value.strip()
+
+            if not key or not value:
+                raise ConfigError(
+                    f"Line {line_num}: key and value cannot be empty."
+                )
+            if key in keyvalues:
+                raise ConfigError(
+                    f"Line {line_num}: key '{key}' is duplicate."
+                     f"Keys must be unique."
+                )
+            keyvalues[key] = value
+
+        return keyvalues
 
 
 # if __name__ == "__main__":
