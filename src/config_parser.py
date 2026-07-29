@@ -40,6 +40,52 @@ class MazeConfig:
 class ConfigParser:
     """Read, Parse, and validate a maze configuration file."""
 
+    REQUIRED_KEYS: frozenset[str] = frozenset(
+        {
+            "WIDTH",
+            "HEIGHT",
+            "ENTRY",
+            "EXIT",
+            "OUTPUT_FILE",
+            "PERFECT",
+        }
+    )
+
+    OPTIONAL_KEYS: frozenset[str] = frozenset(
+        {
+            "SEED",
+        }
+    )
+
+    @classmethod
+    def _validate_keys(cls, config_kv: dict[str, str]) -> None:
+        provided: set[str] = set(config_kv)
+        missing: set[str] = set(config_kv) - provided
+
+        if missing:
+            raise ConfigError(
+                f"config file is missing mandatory keys: "
+                f"{", ".join(missing)}"
+            )
+
+        allowed: frozenset[str] = (
+            cls.REQUIRED_KEYS | cls.OPTIONAL_KEYS
+        )
+        not_knowon_set: set[str] = provided - allowed
+        if not_knowon_set:
+            raise ConfigError(
+                f"Unknown keys: {", ".join(missing)}"
+            )
+
+    @staticmethod
+    def _parse_int(value: str, key: str) -> int:
+        try:
+            return int(value)
+        except ValueError as error:
+            raise ConfigError(
+                f"'{key}' must be an integer. but got '{value}'."
+            ) from error
+
     @staticmethod
     def _read_file(filename: str) -> list[str]:
         """
