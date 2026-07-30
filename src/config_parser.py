@@ -1,3 +1,4 @@
+from ast import parse
 import typing
 import sys
 
@@ -60,7 +61,7 @@ class ConfigParser:
     @classmethod
     def _validate_keys(cls, config_kv: dict[str, str]) -> None:
         provided: set[str] = set(config_kv)
-        missing: set[str] = set(config_kv) - provided
+        missing: frozenset[str] = cls.REQUIRED_KEYS - provided
 
         if missing:
             raise ConfigError(
@@ -85,6 +86,43 @@ class ConfigParser:
             raise ConfigError(
                 f"'{key}' must be an integer. but got '{value}'."
             ) from error
+
+    @classmethod
+    def _parse_str_to_positive_int(cls, value: str, key: str) -> int:
+        "Convert a value to a postitive integer"
+        num: int = cls._parse_int(value, key)
+        if num <= 0:
+            raise ConfigError(f"'{key}' must be greater than zero")
+        return num
+
+    @classmethod
+    def _parse_coordinate(
+        cls,
+        value: str,
+        key: str,
+    ) -> tuple[int, int]:
+        """Convert a value such as '3,5' to a coordinate tuple."""
+        coord: list[str] = value.split(",")
+
+        if len(coord) != 2:
+            raise ConfigError(
+                f"'{key}' must use the format x,y, got '{value}'"
+            )
+
+        x: int = cls._parse_int(coord[0].strip(), key)
+        y: int = cls._parse_int(coord[0].strip(), key)
+
+        return x, y
+
+    @staticmethod
+    def _parse_bool(value: str, key: str) -> bool:
+        if value == "True":
+            return True
+        if value == "False":
+            return False
+        raise ConfigError(
+            f"'{key}' must be 'True' or 'False', but got: '{value}'"
+        )
 
     @staticmethod
     def _read_file(filename: str) -> list[str]:
