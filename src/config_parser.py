@@ -1,4 +1,6 @@
 from ast import parse
+from importlib.metadata import entry_points
+from math import radians
 from tkinter import NO
 import typing
 import sys
@@ -160,7 +162,7 @@ class ConfigParser:
                     ) from error
 
     @staticmethod
-    def _strip_whitespace_and_comments(lines: list[str]) -> list[str]:
+    def _clean_lines(lines: list[str]) -> list[str]:
         """Strip whitespace and comments from the configuration lines.
 
         Args:
@@ -205,33 +207,54 @@ class ConfigParser:
 
         return keyvalues
 
+    @classmethod
+    def parse_file(cls, filename: str) -> MazeConfig:
+        raw_lines: list[str] = cls._read_file(filename)
+        cleaned_lines: list[str] = cls._clean_lines(raw_lines)
+        keyvalues: dict[str, str] = cls._parse_lines(cleaned_lines)
 
-# if __name__ == "__main__":
-    # testing datamodel
-    # config = MazeConfig(
-    #     width=20,
-    #     height=18,
-    #     entry=(0, 0),
-    #     exit=(19, 17),
-    #     output_file="maze.txt",
-    #     perfect=False,
-    #     seed=42,
-    # )
-    # print(config)
+        cls._validate_keys(keyvalues)
+        width: int = cls._parse_str_to_positive_int(
+            keyvalues["WIDTH"],
+            "WIDTH",
+        )
 
-    #testing ConfigError
-    # try:
-    #     raise ConfigError("Testing config error")
-    # except ConfigError as error:
-    #     print(error)
+        height: int = cls._parse_str_to_positive_int(
+            keyvalues["HEIGHT"],
+            "HEIGHT",
+        )
 
-    #test reading file
-    # print(ConfigParser._read_file("../config.txt"))
-    # print(ConfigParser._read_file("../wrong_config.txt"))
-    # lines = [
-    #     "# mandatory keys\n",
-    #     "WIDTH=20\n",
-    #     "\n",
-    #     " HEIGHT=18 \n",
-    # ]
-    # print(ConfigParser._strip_whitespace_and_comments(lines))
+        entry_point: tuple[int, int] = cls._parse_coordinate(
+            keyvalues["Entry"],
+            "Entry",
+        )
+
+        exit_point: tuple[int, int] = cls._parse_coordinate(
+                    keyvalues["EXIT"],
+                    "EXIT",
+        )
+
+        perfect: bool = cls._parse_bool(
+            keyvalues["PERFECT"],
+            "PERFECT",
+        )
+
+        cls._validate_position(entry_point, width, height, "ENTRY")
+        cls._validate_position(exit_point, width, height, "EXIT")
+
+        if entry_point == exit_point:
+            raise ConfigError("ENTRY and EXIT cannot be the same.")
+
+        seed: int | None = None
+        if "SEED" in keyvalues:
+            seed = cls._parse_int(keyvalues["SEED"], "SEED")
+
+        return MazeConfig(
+            width=width,
+            height=height,
+            entry = entry_point,
+            exit=exit_point,
+            output_file=keyvalues["OUTPUT_FILE"],
+            perfect=perfect,
+            seed=seed
+        )
