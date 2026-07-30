@@ -2,7 +2,7 @@ import sys
 from config_parser import ConfigError, MazeConfig, ConfigParser
 
 
-def get_config_file_name()-> str:
+def get_config_file_name() -> str:
     if len(sys.argv) != 2:
         raise ConfigError(
             "Usage: python3 a_maze_ing.py <config_file.txt>"
@@ -11,7 +11,7 @@ def get_config_file_name()-> str:
 
 
 
-def main()-> int:
+def main() -> int:
     try:
         filename: str = get_config_file_name()
         # config: MazeConfig = parse(filename
