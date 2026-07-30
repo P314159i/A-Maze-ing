@@ -1,18 +1,6 @@
+"""Configuration parsing for the A-Maze-ing project."""
+
 from dataclasses import dataclass
-
-
-# # mandatory keys
-# WIDTH=20
-# HEIGHT=18
-# ENTRY=0,0
-# EXIT=19,17
-# OUTPUT_FILE=maze.txt
-# PERFECT=False
-
-# # optional keys
-# SEED=42
-# # ALGORITHM=??
-# # DISPLAY_MODE=???
 
 
 class ConfigError(Exception):
@@ -104,8 +92,16 @@ class ConfigParser:
                 f"'{key}' must use the format x,y, got '{value}'"
             )
 
-        x: int = cls._parse_int(coord[0].strip(), key)
-        y: int = cls._parse_int(coord[0].strip(), key)
+        x_str: str = coord[0].strip()
+        y_str: str = coord[0].strip()
+
+        if not x_str or not y_str:
+            raise ConfigError(
+                f"'{key}' must contain both x and y coordinates."
+            )
+
+        x: int = cls._parse_int(x_str, key)
+        y: int = cls._parse_int(y_str, key)
 
         return x, y
 
@@ -126,11 +122,19 @@ class ConfigParser:
         height: int,
         key: str,
     ) -> None:
+        """Ensure a coordinate is inside the maze."""
         x, y = position
-        if not (0 <= x < width and 0 <= y < height):
+
+        if not 0 <= x < width:
             raise ConfigError(
-                f"'{key}' position is '{position}'. it's out of bound."
-                f"Valid bounds for the maze: {width}x{height}"
+                f"{key} x-coordinate {x} is outside "
+                f"the valid range: 0 to {width - 1}"
+            )
+
+        if not 0 <= y < height:
+            raise ConfigError(
+                f"{key} y-coordinate {y} is outside "
+                f"the valid range 0 to {height - 1}"
             )
 
     @staticmethod
