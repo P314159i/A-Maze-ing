@@ -1,4 +1,5 @@
 from ast import parse
+from tkinter import NO
 import typing
 import sys
 
@@ -123,6 +124,20 @@ class ConfigParser:
         raise ConfigError(
             f"'{key}' must be 'True' or 'False', but got: '{value}'"
         )
+
+    @staticmethod
+    def _validate_position(
+        position: tuple[int, int],
+        width: int,
+        height: int,
+        key: str,
+    ) -> None:
+        x, y = position
+        if not (0 <= x < width and 0 <= y < height):
+            raise ConfigError(
+                f"'{key}' position is '{position}'. it's out of bound."
+                f"Valid bounds for the maze: {width}x{height}"
+            )
 
     @staticmethod
     def _read_file(filename: str) -> list[str]:
