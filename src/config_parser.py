@@ -1,9 +1,4 @@
-from ast import parse
-from importlib.metadata import entry_points
-from math import radians
-from tkinter import NO
-import typing
-import sys
+from dataclasses import dataclass
 
 
 # # mandatory keys
@@ -20,13 +15,10 @@ import sys
 # # DISPLAY_MODE=???
 
 
-from dataclasses import dataclass
-from wsgiref.validate import ErrorWrapper
-
-
 class ConfigError(Exception):
     """Raised when configuration data is invalid."""
     pass
+
 
 @dataclass(frozen=True)
 class MazeConfig:
@@ -157,9 +149,9 @@ class ConfigParser:
             with open(filename, "r") as config_file:
                 return config_file.readlines()
         except OSError as error:
-                raise ConfigError(
-                    f"Configuration file '{filename}': {error}."
-                    ) from error
+            raise ConfigError(
+                f"Configuration file '{filename}': {error}."
+                ) from error
 
     @staticmethod
     def _clean_lines(lines: list[str]) -> list[str]:
@@ -172,7 +164,7 @@ class ConfigParser:
         """
         cleaned_lines: list[str] = []
         for line in lines:
-            trimmed_line: str= line.strip()
+            trimmed_line: str = line.strip()
             if line.startswith("#") or not trimmed_line:
                 continue
             cleaned_lines.append(trimmed_line)
@@ -201,7 +193,7 @@ class ConfigParser:
             if key in keyvalues:
                 raise ConfigError(
                     f"Line {line_num}: key '{key}' is duplicate."
-                     f"Keys must be unique."
+                    f"Keys must be unique."
                 )
             keyvalues[key] = value
 
@@ -252,7 +244,7 @@ class ConfigParser:
         return MazeConfig(
             width=width,
             height=height,
-            entry = entry_point,
+            entry=entry_point,
             exit=exit_point,
             output_file=keyvalues["OUTPUT_FILE"],
             perfect=perfect,
