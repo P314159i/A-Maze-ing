@@ -43,6 +43,8 @@ class ConfigParser:
 
     @classmethod
     def _validate_keys(cls, config_kv: dict[str, str]) -> None:
+        """Check mandatory and unsupported keys."""
+
         provided: set[str] = set(config_kv)
         missing: frozenset[str] = cls.REQUIRED_KEYS - provided
 
@@ -55,14 +57,15 @@ class ConfigParser:
         allowed: frozenset[str] = (
             cls.REQUIRED_KEYS | cls.OPTIONAL_KEYS
         )
-        not_knowon_set: set[str] = provided - allowed
-        if not_knowon_set:
+        unknowon_set: set[str] = provided - allowed
+        if unknowon_set:
             raise ConfigError(
                 f"Unknown keys: {", ".join(missing)}"
             )
 
     @staticmethod
     def _parse_int(value: str, key: str) -> int:
+        """Convert a value to an integer."""
         try:
             return int(value)
         except ValueError as error:
@@ -71,11 +74,13 @@ class ConfigParser:
             ) from error
 
     @classmethod
-    def _parse_str_to_positive_int(cls, value: str, key: str) -> int:
+    def _parse_positive_int(cls, value: str, key: str) -> int:
         "Convert a value to a postitive integer"
+
         num: int = cls._parse_int(value, key)
         if num <= 0:
             raise ConfigError(f"'{key}' must be greater than zero")
+
         return num
 
     @classmethod
@@ -138,7 +143,7 @@ class ConfigParser:
             )
 
     @staticmethod
-    def _read_file(filename: str) -> list[str]:
+    def _read_file(filename: str) -> dict[str, str]:
         """
         Read the configuration file and return its lines.
 
@@ -149,108 +154,129 @@ class ConfigParser:
         Raises:
             ConfigError: If the file cannot be read.
         """
+
+        values: dict[str, str] = {}
+
         try:
             with open(filename, "r") as config_file:
-                return config_file.readlines()
+                for line_number, raw_line in enumerate(
+                    config_file,
+                    start=1,
+                ):
+                    line: str = raw_line.strip()
+
+                    if not line or line.startswith("#"):
+                        continue
+
+                    key, separator, value = line.partition("=")
+
+                    if not separator:
+                        raise ConfigError(
+                            f"Line {line_number}: "
+                            "expected KEY=VALUE"
+                        )
+
+                    key = key.strip()
+                    value = value.strip()
+
+                    if not key:
+                        raise ConfigError(
+                            f"Line {line_number}: key cannot be empty"
+                        )
+
+                    if not value:
+                        raise ConfigError(
+                            f"Line {line_number}: value for "
+                            f"'{key}' cannot be empty"
+                        )
+
+                    if key in values:
+                        raise ConfigError(
+                            f"Line {line_number}: "
+                            f"duplicate key '{key}'"
+                        )
+
+                    values[key] = value
+
         except OSError as error:
             raise ConfigError(
-                f"Configuration file '{filename}': {error}."
-                ) from error
+                f"Could not read configuration file "
+                f"'{filename}': {error}"
+            ) from error
+
+        return values
 
     @staticmethod
-    def _clean_lines(lines: list[str]) -> list[str]:
-        """Strip whitespace and comments from the configuration lines.
-
-        Args:
-            lines: List of strings representing the lines in the config file.
-        Returns:
-            A list of strings with whitespace stripped and comments removed.
-        """
-        cleaned_lines: list[str] = []
-        for line in lines:
-            trimmed_line: str = line.strip()
-            if line.startswith("#") or not trimmed_line:
-                continue
-            cleaned_lines.append(trimmed_line)
-
-        return cleaned_lines
-
-    @staticmethod
-    def _parse_lines(lines: list[str]) -> dict[str, str]:
-        keyvalues: dict[str, str] = {}
-        for line_num, line in enumerate(lines, start=1):
-            key, sep, value = line.partition("=")
-
-            if not sep:
-                raise ConfigError(
-                    f"Line {line_num}: expected: key=value."
-                    f"Please make sure the config file is correct."
-                )
-
-            key = key.strip()
-            value = value.strip()
-
-            if not key or not value:
-                raise ConfigError(
-                    f"Line {line_num}: key and value cannot be empty."
-                )
-            if key in keyvalues:
-                raise ConfigError(
-                    f"Line {line_num}: key '{key}' is duplicate."
-                    f"Keys must be unique."
-                )
-            keyvalues[key] = value
-
-        return keyvalues
+    def _validate_output_file(output_file: str) -> None:
+        """Check the output filename."""
+        if not output_file:
+            raise ConfigError("OUTPUT_FILE cannot be empty")
 
     @classmethod
-    def parse_file(cls, filename: str) -> MazeConfig:
-        raw_lines: list[str] = cls._read_file(filename)
-        cleaned_lines: list[str] = cls._clean_lines(raw_lines)
-        keyvalues: dict[str, str] = cls._parse_lines(cleaned_lines)
+    def parse(cls, filename: str) -> MazeConfig:
+        """Read and validate a configuration file.
 
-        cls._validate_keys(keyvalues)
-        width: int = cls._parse_str_to_positive_int(
-            keyvalues["WIDTH"],
+        Args:
+            filename: Path to the configuration file.
+
+        Returns:
+            Validated maze configuration.
+
+        Raises:
+            ConfigError: If the file or its contents are invalid.
+        """
+        values: dict[str, str] = cls._read_file(filename)
+
+        cls._validate_keys(values)
+
+        width: int = cls._parse_positive_int(
+            values["WIDTH"],
             "WIDTH",
         )
-
-        height: int = cls._parse_str_to_positive_int(
-            keyvalues["HEIGHT"],
+        height: int = cls._parse_positive_int(
+            values["HEIGHT"],
             "HEIGHT",
         )
 
         entry_point: tuple[int, int] = cls._parse_coordinate(
-            keyvalues["Entry"],
-            "Entry",
+            values["ENTRY"], "ENTRY",
         )
-
         exit_point: tuple[int, int] = cls._parse_coordinate(
-                    keyvalues["EXIT"],
-                    "EXIT",
+            values["EXIT"],
+            "EXIT",
         )
 
-        perfect: bool = cls._parse_bool(
-            keyvalues["PERFECT"],
-            "PERFECT",
-        )
+        output_file: str = values["OUTPUT_FILE"].strip()
 
-        cls._validate_position(entry_point, width, height, "ENTRY")
-        cls._validate_position(exit_point, width, height, "EXIT")
+        perfect: bool = cls._parse_bool(values["PERFECT"], "PERFECT")
+        seed: int | None = None
+
+        if "SEED" in values:
+            seed = cls._parse_int(values["SEED"], "SEED")
+
+        cls._validate_output_file(output_file)
+        cls._validate_position(
+            entry_point,
+            width,
+            height,
+            "ENTRY",
+        )
+        cls._validate_position(
+            exit_point,
+            width,
+            height,
+            "EXIT",
+        )
 
         if entry_point == exit_point:
-            raise ConfigError("ENTRY and EXIT cannot be the same.")
-
-        seed: int | None = None
-        if "SEED" in keyvalues:
-            seed = cls._parse_int(keyvalues["SEED"], "SEED")
+            raise ConfigError("ENTRY and EXIT must be different")
 
         return MazeConfig(
             width=width,
             height=height,
             entry=entry_point,
             exit=exit_point,
-            output_file=keyvalues["OUTPUT_FILE"],
+            output_file=output_file,
             perfect=perfect,
-            seed=seed
+            seed=seed,
         )
