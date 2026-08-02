@@ -2,8 +2,8 @@
 # mandatory keys
 WIDTH=20
 HEIGHT=18
-ENTRY=0,0
-EXIT=19,17
+ENTRY=1,1
+EXIT=15,17
 OUTPUT_FILE=maze.txt
 PERFECT=False
 

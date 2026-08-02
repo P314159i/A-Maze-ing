@@ -18,7 +18,7 @@ def main() -> int:
 
     try:
         filename: str = get_config_file_name()
-        config: MazeConfig = ConfigParser.parse_file(filename)
+        config: MazeConfig = ConfigParser.parse(filename)
         print(config)
         return 0
     except ConfigError as error:
