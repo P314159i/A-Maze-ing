@@ -132,13 +132,13 @@ class ConfigParser:
 
         if not 0 <= x < width:
             raise ConfigError(
-                f"{key} x-coordinate {x} is outside "
+                f"x-coordinate '{key}'[x]={x} is outside "
                 f"the valid range: 0 to {width - 1}"
             )
 
         if not 0 <= y < height:
             raise ConfigError(
-                f"{key} y-coordinate {y} is outside "
+                f"y-coordinate '{key}'[y]={y} is outside "
                 f"the valid range 0 to {height - 1}"
             )
 
