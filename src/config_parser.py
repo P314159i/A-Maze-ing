@@ -60,7 +60,7 @@ class ConfigParser:
         unknowon_keys_set: set[str] = provided - allowed
         if unknowon_keys_set:
             raise ConfigError(
-                f"Unknown keys: {", ".join(missing)}"
+                f"Unknown keys: {", ".join(sorted(unknowon_keys_set))}"
             )
 
     @staticmethod
