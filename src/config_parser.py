@@ -145,14 +145,14 @@ class ConfigParser:
     @staticmethod
     def _read_file(filename: str) -> dict[str, str]:
         """
-        Read the configuration file and return its lines.
+        Read the configuration values from a file.
 
         Args:
             filename: Path to the configuration file (including its name).
         Returns:
-            A list of strings, each representing a line in the config file.
+            A dictionary mapping configuration keys to their values.
         Raises:
-            ConfigError: If the file cannot be read.
+            ConfigError: If the file cannot be read or contains invalid lines.
         """
 
         values: dict[str, str] = {}
