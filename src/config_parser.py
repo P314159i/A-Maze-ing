@@ -57,8 +57,8 @@ class ConfigParser:
         allowed: frozenset[str] = (
             cls.REQUIRED_KEYS | cls.OPTIONAL_KEYS
         )
-        unknowon_set: set[str] = provided - allowed
-        if unknowon_set:
+        unknowon_keys_set: set[str] = provided - allowed
+        if unknowon_keys_set:
             raise ConfigError(
                 f"Unknown keys: {", ".join(missing)}"
             )
@@ -98,7 +98,7 @@ class ConfigParser:
             )
 
         x_str: str = coord[0].strip()
-        y_str: str = coord[0].strip()
+        y_str: str = coord[1].strip()
 
         if not x_str or not y_str:
             raise ConfigError(
