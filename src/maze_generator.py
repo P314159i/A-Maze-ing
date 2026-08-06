@@ -128,6 +128,9 @@ class Maze:
 
     # def get_cell(self, r: int, c: int) -> Cell:
     #     return self.grid[r][c]
+    # give grid list starting top left ending bottom-right. of cell wall values.
+    # do your own tests, put them in "test" folder, naming (test_...)
+    #
         '''
         to do next:
         custom parameters such as size and seed;
@@ -141,7 +144,53 @@ class Maze:
         exit
         solution path
         public access methods
-        
+
         BFS needs entrance and exit of the maze
         entry=(2, 3)
         '''
+
+
+
+        '''
+        Yes, I can access the public branches.
+
+What I found:
+
+* `Maze-Generator` contains only `.gitignore`, `README.md`, and your `maze_generator.py`; it is not yet integrated into the `src/` project structure. ([GitHub][1])
+* `feature/config-parser` contains the parser, tests, Makefile, main script, and project structure. ([GitHub][2])
+* `feat/solver` currently does **not appear to contain a solver file**; its `src/` directory only shows `__init__.py` and `config_parser.py`. ([GitHub][3])
+
+## What is left for you
+
+Your next task should be **integration**, not more standalone maze logic:
+
+1. Move/adapt `maze_generator.py` into `src/`, likely as `src/maze_generator.py`.
+2. Make it accept `MazeConfig` values:
+
+   ```python
+   Maze(
+       config.width,
+       config.height,
+       config.seed,
+       config.entry,
+       config.exit,
+   )
+   ```
+3. Add tests specifically for your generator:
+
+   * all cells visited;
+   * same seed produces identical walls;
+   * neighbouring walls agree;
+   * invalid dimensions fail.
+4. Then implement the visible **“42” closed-cell pattern**.
+5. After that, take either:
+
+   * hexadecimal output/export, or
+   * terminal visualization and interactions.
+
+Important: your comments and docstrings currently will not satisfy the subject’s required PEP 257-style class and method documentation, so that cleanup remains later.
+
+[1]: https://github.com/P314159i/A-Maze-ing/tree/Maze-Generator "GitHub - P314159i/A-Maze-ing at Maze-Generator · GitHub"
+[2]: https://github.com/P314159i/A-Maze-ing/tree/feature/config-parser "GitHub - P314159i/A-Maze-ing at feature/config-parser · GitHub"
+[3]: https://github.com/P314159i/A-Maze-ing/tree/feat/solver/src "A-Maze-ing/src at feat/solver · P314159i/A-Maze-ing · GitHub"
+'''
