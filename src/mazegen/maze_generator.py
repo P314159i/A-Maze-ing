@@ -26,10 +26,12 @@ class Maze:
             self,
             width: int,
             height: int,
+            entry: tuple[int, int],
+            exit: tuple[int, int],
+            perfect: bool,
             myseed: int | None = None,
-            entry: tuple[int, int] = (0, 0),
-            exit: tuple[int, int] | None = None
-            ) -> None:
+                ) -> None:
+
         if width <= 0 or height <= 0:
             raise ValueError("Maze dimensions must be positive")
 
@@ -38,6 +40,7 @@ class Maze:
         self.myseed = myseed
         self.rndm = random.Random(myseed)
         self.entry = entry
+        self.perfect = perfect
 
         if exit is not None:
             self.exit = exit
@@ -157,6 +160,44 @@ class Maze:
             else:
                 stack.pop()
 
+            if self.perfect:
+                return
+            else:
+                self._make_non_perfect()
+
+    def make_non_perfect(self) -> None:
+
+        dead_ends: list[tuple[int, int]] = []
+
+        for x in range(self.width):
+            for y in range(self.height):
+                cell = self.grid[x][y]
+
+            if cell.walls.bit_count() == 3:
+                dead_ends.append((x, y))
+        self.rndm.shuffle(dead_ends)
+
+        for x, y in dead_ends:
+            cell = self.grid[x][y]
+
+            possible_walls: list[tuple[int, int]] = []
+
+            if y > 0 and cell.walls & 0b0001:
+                possible_walls.append((x, y - 1))
+
+            if x < self.width - 1 and cell.walls & 0b0010:
+                possible_walls.append((x + 1, y))
+
+            if y < self.height - 1 and cell.walls & 0b0100:
+                possible_walls.append((x, y + 1))
+
+            if x > 0 and cell.walls & 0b1000:
+                possible_walls.append((x - 1, y))
+
+            if possible_walls:
+                nx, ny = self.rndm.choice(possible_walls)
+                self._open_wall(x, y, nx, ny)
+
     # it returns only one cell's wall integer 0-15
     # solver needs a 2D list of integers accessed as maze[x][y]
     def get_grid(self) -> list[list[int]]:
@@ -168,72 +209,12 @@ class Maze:
             for y in range(self.height)
         ]
 
-    def solve(self) -> str:
-        """Return the shortest solution path from entry to exit."""
-        return MazeSolver.find_shortest_path(
-            self.get_grid(),
-            self.entry,
-            self.exit,
-        )
+    # def solve(self) -> str:
+    #     """Return the shortest solution path from entry to exit."""
+    #     return MazeSolver.find_shortest_path(
+    #         self.get_grid(),
+    #         self.entry,
+    #         self.exit,
+    #     )
 
-    # do your own tests, put them in "test" folder, naming (test_...)
-
-    '''
-    A-Maze-ing main() -> accesses to "class Maze" and instantiate a maze)
-    ↓
-    MazeSolver.find_shortest_path(...)
-
-    ** in main() :
-        grid = maze.get_grid()
-
-        solution = MazeSolver.find_shortest_path(
-            grid,
-            maze.entry,
-            maze.exit,
-        )
-
-    OR now, because Maze has a public solve() method:
-
-        solution = maze.solve()
-
-    ** solver gets:
-        MazeSolver.find_shortest_path(
-            maze,         # list[list[int]]
-            entry_point,  # tuple[int, int]
-            exit_point,   # tuple[int, int]
-        )
-
-        and inside solver:
-            maze[y][x]
-
-        This all comes from main, after instantiating maze class
-
-
-        ** so:
-
-        main()
-            ↓
-            create Maze(...)
-                ↓
-                maze.generate()
-                    ↓
-                    get:
-                    - whole maze grid / cell wall integers
-                    - entry
-                    - exit
-                        ↓
-                        pass those 3 to MazeSolver
-                            ↓
-                            solver returns solution string like "EESSWN..."
-
-    Width and height do not need to be passed separately
-        because her solver calculates them from the grid itself using
-        len(maze) and len(maze[0]).
-
-    access Maze Class from main() as:
-        - maze.generate()
-        - solution = maze.solve()
-        then maze.solve() of class Maze calls get_grid() and passes the grid 
-            to BFS solver, aka MazeSolver.find_shortest_path(...)
-
-    '''
+    # todo: check perfect
