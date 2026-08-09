@@ -14,8 +14,8 @@ class MazeConfig:
 
     width: int
     height: int
-    entry: tuple[int, int]
-    exit: tuple[int, int]
+    entry_point: tuple[int, int]
+    exit_point: tuple[int, int]
     output_file: str
     perfect: bool
     seed: int | None
@@ -274,8 +274,8 @@ class ConfigParser:
         return MazeConfig(
             width=width,
             height=height,
-            entry=entry_point,
-            exit=exit_point,
+            entry_point=entry_point,
+            exit_point=exit_point,
             output_file=output_file,
             perfect=perfect,
             seed=seed,

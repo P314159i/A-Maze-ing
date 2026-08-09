@@ -27,7 +27,7 @@ class Maze:
             width: int,
             height: int,
             entry: tuple[int, int],
-            exit: tuple[int, int],
+            exitt: tuple[int, int],
             perfect: bool,
             myseed: int | None = None,
                 ) -> None:
@@ -42,10 +42,10 @@ class Maze:
         self.entry = entry
         self.perfect = perfect
 
-        if exit is not None:
-            self.exit = exit
+        if exitt is not None:
+            self.exitt = exitt
         else:
-            self.exit = (width - 1, height - 1)
+            self.exitt = (width - 1, height - 1)
 
         if not (
             0 <= self.entry[0] < width
@@ -54,12 +54,12 @@ class Maze:
             raise ValueError("Entry is outside the maze")
 
         if not (
-            0 <= self.exit[0] < width
-            and 0 <= self.exit[1] < height
+            0 <= self.exitt[0] < width
+            and 0 <= self.exitt[1] < height
         ):
             raise ValueError("Exit is outside the maze")
 
-        if self.entry == self.exit:
+        if self.entry == self.exitt:
             raise ValueError("Entry and exit must be different")
 
         '''
@@ -160,10 +160,10 @@ class Maze:
             else:
                 stack.pop()
 
-            if self.perfect:
-                return
-            else:
-                self._make_non_perfect()
+        if self.perfect:
+            return
+        else:
+            self.make_non_perfect()
 
     def make_non_perfect(self) -> None:
 
@@ -210,11 +210,11 @@ class Maze:
         ]
 
     # def solve(self) -> str:
-    #     """Return the shortest solution path from entry to exit."""
+    #     """Return the shortest solution path from entry to exitt."""
     #     return MazeSolver.find_shortest_path(
     #         self.get_grid(),
     #         self.entry,
-    #         self.exit,
+    #         self.exitt,
     #     )
 
     # todo: check perfect
