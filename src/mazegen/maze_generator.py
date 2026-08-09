@@ -1,6 +1,6 @@
 import random
 
-from src.solver import MazeSolver
+# from src.solver import MazeSolver
 
 
 class Maze:
