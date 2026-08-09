@@ -1,5 +1,7 @@
 import random
 
+from src.solver import MazeSolver
+
 
 class Maze:
     '''
@@ -155,8 +157,8 @@ class Maze:
             else:
                 stack.pop()
 
-        # it returns only one cell's wall integer 0-15
-        # solver needs a 2D list of integers accessed as maze[x][y]
+    # it returns only one cell's wall integer 0-15
+    # solver needs a 2D list of integers accessed as maze[x][y]
     def get_grid(self) -> list[list[int]]:
         return [
             [
@@ -165,6 +167,14 @@ class Maze:
             ]
             for y in range(self.height)
         ]
+
+    def solve(self) -> str:
+        """Return the shortest solution path from entry to exit."""
+        return MazeSolver.find_shortest_path(
+            self.get_grid(),
+            self.entry,
+            self.exit,
+        )
 
     # do your own tests, put them in "test" folder, naming (test_...)
 
@@ -182,6 +192,10 @@ class Maze:
             maze.exit,
         )
 
+    OR now, because Maze has a public solve() method:
+
+        solution = maze.solve()
+
     ** solver gets:
         MazeSolver.find_shortest_path(
             maze,         # list[list[int]]
@@ -198,19 +212,28 @@ class Maze:
         ** so:
 
         main()
-        ↓
-        create Maze(...)
-        ↓
-        maze.generate()
-        ↓
-        get:
-        - whole maze grid / cell wall integers
-        - entry
-        - exit
-        ↓
-        pass those 3 to MazeSolver
-        ↓
-        solver returns solution string like "EESSWN..."
+            ↓
+            create Maze(...)
+                ↓
+                maze.generate()
+                    ↓
+                    get:
+                    - whole maze grid / cell wall integers
+                    - entry
+                    - exit
+                        ↓
+                        pass those 3 to MazeSolver
+                            ↓
+                            solver returns solution string like "EESSWN..."
 
+    Width and height do not need to be passed separately
+        because her solver calculates them from the grid itself using
+        len(maze) and len(maze[0]).
+
+    access Maze Class from main() as:
+        - maze.generate()
+        - solution = maze.solve()
+        then maze.solve() of class Maze calls get_grid() and passes the grid 
+            to BFS solver, aka MazeSolver.find_shortest_path(...)
 
     '''
