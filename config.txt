@@ -1,11 +1,18 @@
+WIDTH=10
+HEIGHT=10
+ENTRY=0,0
+EXIT=9,9
+OUTPUT_FILE=output.txt
+PERFECT=True
+SEED=42
 
 # mandatory keys
-WIDTH=20
-HEIGHT=18
-ENTRY=1,1
-EXIT=15,17
-OUTPUT_FILE=maze.txt
-PERFECT=False
+# WIDTH=3
+# HEIGHT=3
+# ENTRY=0,0
+# EXIT=2,2
+# OUTPUT_FILE=maze.txt
+# PERFECT=False
 
 # optional keys
 # SEED=42
