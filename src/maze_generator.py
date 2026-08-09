@@ -36,10 +36,12 @@ class Maze:
         self.myseed = myseed
         self.rndm = random.Random(myseed)
         self.entry = entry
+
         if exit is not None:
             self.exit = exit
         else:
             self.exit = (width - 1, height - 1)
+
         if not (
             0 <= self.entry[0] < width
             and 0 <= self.entry[1] < height
@@ -51,6 +53,10 @@ class Maze:
             and 0 <= self.exit[1] < height
         ):
             raise ValueError("Exit is outside the maze")
+
+        if self.entry == self.exit:
+            raise ValueError("Entry and exit must be different")
+
         '''
         assign an enter and exit
         entry = starting cell for DFS
@@ -77,10 +83,20 @@ class Maze:
     def generate(self) -> None:
         self.reset()
         self.rndm.seed(self.myseed)
+
         start_r, start_c = self.entry
         self.grid[start_r][start_c].visited = True
-        stack: list["Maze.Cell"] = [self.grid[start_r][start_c]]
-        directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+
+        stack: list["Maze.Cell"] = [
+            self.grid[start_r][start_c]
+        ]
+
+        directions = [
+            (0, -1),
+            (0, 1),
+            (-1, 0),
+            (1, 0)
+        ]
 
         while stack:
             current = stack[-1]
@@ -95,15 +111,28 @@ class Maze:
                     and 0 <= n_c < self.height
                     and not self.grid[n_r][n_c].visited
                 ):
-                    neighbors.append(self.grid[n_r][n_c])
+                    neighbors.append(
+                        self.grid[n_r][n_c]
+                    )
 
             if neighbors:
                 next_cell = self.rndm.choice(neighbors)
+
                 '''
                 *DFS*
-                Walls are stored as 4 bit binary: NESW (0bxxxx)
-                Binary Mask = north:0b0111,east:0b1011,south:0b1101,west:0b1110
+                Walls are stored as 4 bit binary.
+                Bit 0 = north
+                Bit 1 = east
+                Bit 2 = south
+                Bit 3 = west
+
+                Binary Mask =
+                north: 0b1110
+                east:  0b1101
+                south: 0b1011
+                west:  0b0111
                 '''
+
                 if next_cell.c > current.c:
                     current.walls &= 0b1011
                     next_cell.walls &= 0b1110
@@ -126,71 +155,62 @@ class Maze:
             else:
                 stack.pop()
 
-    # def get_cell(self, r: int, c: int) -> Cell:
-    #     return self.grid[r][c]
-    # give grid list starting top left ending bottom-right. of cell wall values.
+        # it returns only one cell's wall integer 0-15
+        # solver needs a 2D list of integers accessed as maze[x][y]
+    def get_grid(self) -> list[list[int]]:
+        return [
+            [
+                self.grid[x][y].walls
+                for x in range(self.width)
+            ]
+            for y in range(self.height)
+        ]
+
     # do your own tests, put them in "test" folder, naming (test_...)
-    #
-        '''
-        to do next:
-        custom parameters such as size and seed;
-        the generated maze structure;
-        at least one solution path;
-        documentation showing how to instantiate and use it;
-        packaging as a standalone installable module.
 
-        seed
-        entry
-        exit
-        solution path
-        public access methods
+    '''
+    A-Maze-ing main() -> accesses to "class Maze" and instantiate a maze)
+    ↓
+    MazeSolver.find_shortest_path(...)
 
-        BFS needs entrance and exit of the maze
-        entry=(2, 3)
-        '''
+    ** in main() :
+        grid = maze.get_grid()
+
+        solution = MazeSolver.find_shortest_path(
+            grid,
+            maze.entry,
+            maze.exit,
+        )
+
+    ** solver gets:
+        MazeSolver.find_shortest_path(
+            maze,         # list[list[int]]
+            entry_point,  # tuple[int, int]
+            exit_point,   # tuple[int, int]
+        )
+
+        and inside solver:
+            maze[y][x]
+
+        This all comes from main, after instantiating maze class
 
 
+        ** so:
 
-        '''
-        Yes, I can access the public branches.
+        main()
+        ↓
+        create Maze(...)
+        ↓
+        maze.generate()
+        ↓
+        get:
+        - whole maze grid / cell wall integers
+        - entry
+        - exit
+        ↓
+        pass those 3 to MazeSolver
+        ↓
+        solver returns solution string like "EESSWN..."
 
-What I found:
 
-* `Maze-Generator` contains only `.gitignore`, `README.md`, and your `maze_generator.py`; it is not yet integrated into the `src/` project structure. ([GitHub][1])
-* `feature/config-parser` contains the parser, tests, Makefile, main script, and project structure. ([GitHub][2])
-* `feat/solver` currently does **not appear to contain a solver file**; its `src/` directory only shows `__init__.py` and `config_parser.py`. ([GitHub][3])
-
-## What is left for you
-
-Your next task should be **integration**, not more standalone maze logic:
-
-1. Move/adapt `maze_generator.py` into `src/`, likely as `src/maze_generator.py`.
-2. Make it accept `MazeConfig` values:
-
-   ```python
-   Maze(
-       config.width,
-       config.height,
-       config.seed,
-       config.entry,
-       config.exit,
-   )
-   ```
-3. Add tests specifically for your generator:
-
-   * all cells visited;
-   * same seed produces identical walls;
-   * neighbouring walls agree;
-   * invalid dimensions fail.
-4. Then implement the visible **“42” closed-cell pattern**.
-5. After that, take either:
-
-   * hexadecimal output/export, or
-   * terminal visualization and interactions.
-
-Important: your comments and docstrings currently will not satisfy the subject’s required PEP 257-style class and method documentation, so that cleanup remains later.
-
-[1]: https://github.com/P314159i/A-Maze-ing/tree/Maze-Generator "GitHub - P314159i/A-Maze-ing at Maze-Generator · GitHub"
-[2]: https://github.com/P314159i/A-Maze-ing/tree/feature/config-parser "GitHub - P314159i/A-Maze-ing at feature/config-parser · GitHub"
-[3]: https://github.com/P314159i/A-Maze-ing/tree/feat/solver/src "A-Maze-ing/src at feat/solver · P314159i/A-Maze-ing · GitHub"
-'''
+    '''
