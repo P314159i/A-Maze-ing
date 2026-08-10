@@ -1,5 +1,5 @@
 WIDTH=18
-HEIGHT=5
+HEIGHT=100
 ENTRY=1,0
 EXIT=8,3
 OUTPUT_FILE=output.txt
@@ -12,7 +12,7 @@ SEED=42
 # ENTRY=0,0
 # EXIT=2,2
 # OUTPUT_FILE=maze.txt
-# PERFECT=False
+# PERFECT=True
 
 # optional keys
 # SEED=42
