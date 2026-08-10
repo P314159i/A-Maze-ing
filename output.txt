@@ -4,6 +4,6 @@ c3aead2ac3c15507aa
 853a969147a96c5696
 c7c46d6c5546d55547
 
-1,0 # entry (x,y)
-8,3   # exit (x,y)
+1,0
+8,3
 ESSESSENENWNNEESSENNESESESSWWWNE

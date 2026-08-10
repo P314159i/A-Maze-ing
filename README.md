@@ -153,4 +153,4 @@ for building the standalone package run:
 
 That guarantees connectivity because every newly visited cell is connected to the already-connected maze.
 
-todo: python3 -m pytest tests/test_maze_generator.py
+todo: python3 -m pytest, python3 -m mypy *, python3 -m flake8 *

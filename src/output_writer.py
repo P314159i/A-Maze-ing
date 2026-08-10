@@ -26,7 +26,7 @@ class OutputWriter:
 
                 output_file.write("\n")
                 output_file.write(
-                    f"{config.entry_point[0]},{config.entry_point[1]} "
+                    f"{config.entry_point[0]},{config.entry_point[1]}\n"
                     f"{config.exit_point[0]},{config.exit_point[1]}\n"
                 )
                 output_file.write(f"{solved_path}\n")

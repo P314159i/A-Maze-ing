@@ -1,21 +1,21 @@
-# """Main entry point for the A-Maze-ing project."""
-
+"""Main entry point for the A-Maze-ing project."""
 
 import sys
 
-from src.config_parser import ConfigError, MazeConfig, ConfigParser
-
-from src.mazegen.maze_generator import Maze
-
-from src.mazegen.solver import MazeSolver
-
-from src.output_writer import OutputWriter
+from src.visualizer import TerminalVisualizer
+from src.config_parser import ConfigError, ConfigParser, MazeConfig
+from src.mazegen.maze_generator import Maze, MazeError
+from src.mazegen.solver import SolverError
+from src.output_writer import OutputError, OutputWriter
 
 
 def get_config_file_name() -> str:
     """Return the configuration filename from the command line."""
     if len(sys.argv) != 2:
-        raise ConfigError("Usage: python3 a_maze_ing.py <config_file.txt>")
+        raise ConfigError(
+            "Usage: python3 a_maze_ing.py <config_file.txt>"
+        )
+
     return sys.argv[1]
 
 
@@ -23,31 +23,46 @@ def main() -> int:
     """Run the A-Maze-ing program."""
     try:
         filename: str = get_config_file_name()
+
         config: MazeConfig = ConfigParser.parse(filename)
-        print(config)
+
         maze = Maze(
             width=config.width,
             height=config.height,
             entry=config.entry_point,
             exitt=config.exit_point,
             perfect=config.perfect,
-            myseed=config.seed
-                )
+            myseed=config.seed,
+        )
+
         maze.generate()
-        solved = MazeSolver.find_shortest_path(
-            maze.get_grid(), config.entry_point, config.exit_point
-            )
-        OutputWriter.write_output(config, maze.get_grid(), solved)
-        # figure out errors
+
+        solved: str = maze.solve()
+
+        OutputWriter.write_output(
+            config,
+            maze.get_grid(),
+            solved,
+        )
+
+        visualizer = TerminalVisualizer(maze)
+        visualizer.run()
+
         return 0
-    except ConfigError as error:
-        print(f"Configuration error: {error}", file=sys.stderr)
+
+    except (
+        ConfigError,
+        MazeError,
+        SolverError,
+        OutputError,
+        ValueError,
+    ) as error:
+        print(f"Error: {error}", file=sys.stderr)
         return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
 
 # """Temporary main program for testing the parser, solver, and writer."""
 
