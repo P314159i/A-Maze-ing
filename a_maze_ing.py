@@ -7,7 +7,7 @@ from src.config_parser import ConfigError, MazeConfig, ConfigParser
 
 from src.mazegen.maze_generator import Maze
 
-from src.solver import MazeSolver, SolverError
+from src.mazegen.solver import MazeSolver, SolverError
 
 from src.output_writer import OutputError, OutputWriter
 

@@ -103,3 +103,50 @@ as N, E, S, W characters.
 
 This covers the specific documentation points required in Chapter VI. :contentReference[oaicite:1]{index=1}
 ```
+
+
+** * `__init__.py` makes a folder behave like one Python package and can expose selected names cleanly.
+
+* We group files in `mazegen/` to keep the reusable package in one folder, and to make __init__ inside of it, so that we can first refer to the folder in .toml file to make the package isntead of seperately, but more importantly when wanting to re-use the class Maze, instead of importing files and classes like:
+
+	from maze_generator import Maze
+	from solver import MazeSolver
+just import:
+	from mazegen import Maze
+which imports mazegen (both files) then uses Maze class
+
+
+
+
+
+pyproject.toml is a configuration file that different tools read when you run those tools.
+
+For your file:
+
+python3 -m build reads [build-system] and [project].
+pytest reads [tool.pytest.ini_options].
+mypy reads [tool.mypy].
+flake8 normally does not read [tool.flake8] unless extra support is added.
+
+
+
+
+the subject tells us several things the evaluator may check, but not the exact evaluation sheet.
+
+They can:
+
+run your program with config files;
+inspect the generated output;
+use maze_analyzer.py / Moulinette to check wall consistency, PERFECT=True, and playable non-perfect mazes;
+ask you to explain your code and decisions; the subject explicitly warns that not understanding your own code can fail the evaluation;
+ask for a small live modification, such as changing a function, display, or data structure within a few minutes.
+evaluate only what is actually committed in your Git repository.
+
+
+for building the standalone package run:
+	python3 -m pip install build
+	python3 -m build --sdist
+  it automatically puts the .tar.gz inside a "dist" folder, you should copy it to the root.
+
+
+.

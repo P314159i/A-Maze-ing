@@ -1,6 +1,6 @@
 import random
 
-# from src.solver import MazeSolver
+from .solver import MazeSolver
 
 
 class Maze:
@@ -30,7 +30,7 @@ class Maze:
             exitt: tuple[int, int],
             perfect: bool,
             myseed: int | None = None,
-                ) -> None:
+            ) -> None:
 
         if width <= 0 or height <= 0:
             raise ValueError("Maze dimensions must be positive")
@@ -41,11 +41,7 @@ class Maze:
         self.rndm = random.Random(myseed)
         self.entry = entry
         self.perfect = perfect
-
-        if exitt is not None:
-            self.exitt = exitt
-        else:
-            self.exitt = (width - 1, height - 1)
+        self.exitt = exitt
 
         if not (
             0 <= self.entry[0] < width
@@ -74,14 +70,15 @@ class Maze:
         and MAze.Cell is kept in delay as string & later it's accessed
         '''
 
+        # grid[row][column]
         self.grid: list[list["Maze.Cell"]] = [
-            [self.Cell(x, y) for y in range(height)]
-            for x in range(width)
+            [self.Cell(r, c) for c in range(width)]
+            for r in range(height)
         ]
 
     def reset(self) -> None:
-        for column in self.grid:
-            for cell in column:
+        for row in self.grid:
+            for cell in row:
                 cell.walls = 0b1111
                 cell.visited = False
 
@@ -89,7 +86,9 @@ class Maze:
         self.reset()
         self.rndm.seed(self.myseed)
 
-        start_r, start_c = self.entry
+        # entry is (x, y), so column = x and row = y
+        start_c, start_r = self.entry
+
         self.grid[start_r][start_c].visited = True
 
         stack: list["Maze.Cell"] = [
@@ -97,10 +96,10 @@ class Maze:
         ]
 
         directions = [
-            (0, -1),
-            (0, 1),
-            (-1, 0),
-            (1, 0)
+            (-1, 0),  # north
+            (1, 0),   # south
+            (0, -1),  # west
+            (0, 1),   # east
         ]
 
         while stack:
@@ -112,8 +111,8 @@ class Maze:
                 n_c = current.c + d_c
 
                 if (
-                    0 <= n_r < self.width
-                    and 0 <= n_c < self.height
+                    0 <= n_r < self.height
+                    and 0 <= n_c < self.width
                     and not self.grid[n_r][n_c].visited
                 ):
                     neighbors.append(
@@ -138,19 +137,19 @@ class Maze:
                 west:  0b0111
                 '''
 
-                if next_cell.c > current.c:
+                if next_cell.r > current.r:  # south
                     current.walls &= 0b1011
                     next_cell.walls &= 0b1110
 
-                elif next_cell.c < current.c:
+                elif next_cell.r < current.r:  # north
                     current.walls &= 0b1110
                     next_cell.walls &= 0b1011
 
-                elif next_cell.r > current.r:
+                elif next_cell.c > current.c:  # east
                     current.walls &= 0b1101
                     next_cell.walls &= 0b0111
 
-                elif next_cell.r < current.r:
+                elif next_cell.c < current.c:  # west
                     current.walls &= 0b0111
                     next_cell.walls &= 0b1101
 
@@ -160,61 +159,85 @@ class Maze:
             else:
                 stack.pop()
 
-        if self.perfect:
-            return
-        else:
+        if not self.perfect:
             self.make_non_perfect()
 
     def make_non_perfect(self) -> None:
 
         dead_ends: list[tuple[int, int]] = []
 
-        for x in range(self.width):
-            for y in range(self.height):
-                cell = self.grid[x][y]
+        for r in range(self.height):
+            for c in range(self.width):
+                cell = self.grid[r][c]
 
-            if cell.walls.bit_count() == 3:
-                dead_ends.append((x, y))
+                if cell.walls.bit_count() == 3:
+                    dead_ends.append((r, c))
+
         self.rndm.shuffle(dead_ends)
 
-        for x, y in dead_ends:
-            cell = self.grid[x][y]
+        for r, c in dead_ends:
+            cell = self.grid[r][c]
 
             possible_walls: list[tuple[int, int]] = []
 
-            if y > 0 and cell.walls & 0b0001:
-                possible_walls.append((x, y - 1))
+            if r > 0 and cell.walls & 0b0001:
+                possible_walls.append((r - 1, c))
 
-            if x < self.width - 1 and cell.walls & 0b0010:
-                possible_walls.append((x + 1, y))
+            if c < self.width - 1 and cell.walls & 0b0010:
+                possible_walls.append((r, c + 1))
 
-            if y < self.height - 1 and cell.walls & 0b0100:
-                possible_walls.append((x, y + 1))
+            if r < self.height - 1 and cell.walls & 0b0100:
+                possible_walls.append((r + 1, c))
 
-            if x > 0 and cell.walls & 0b1000:
-                possible_walls.append((x - 1, y))
+            if c > 0 and cell.walls & 0b1000:
+                possible_walls.append((r, c - 1))
 
             if possible_walls:
-                nx, ny = self.rndm.choice(possible_walls)
-                self._open_wall(x, y, nx, ny)
+                n_r, n_c = self.rndm.choice(possible_walls)
+                self._open_wall(r, c, n_r, n_c)
 
-    # it returns only one cell's wall integer 0-15
-    # solver needs a 2D list of integers accessed as maze[x][y]
+    def _open_wall(
+            self,
+            r: int,
+            c: int,
+            n_r: int,
+            n_c: int,
+            ) -> None:
+        '''
+        Open the wall between two neighboring cells
+        '''
+
+        if n_c > c:  # east
+            self.grid[r][c].walls &= 0b1101
+            self.grid[n_r][n_c].walls &= 0b0111
+
+        elif n_c < c:  # west
+            self.grid[r][c].walls &= 0b0111
+            self.grid[n_r][n_c].walls &= 0b1101
+
+        elif n_r > r:  # south
+            self.grid[r][c].walls &= 0b1011
+            self.grid[n_r][n_c].walls &= 0b1110
+
+        elif n_r < r:  # north
+            self.grid[r][c].walls &= 0b1110
+            self.grid[n_r][n_c].walls &= 0b1011
+
     def get_grid(self) -> list[list[int]]:
         return [
             [
-                self.grid[x][y].walls
-                for x in range(self.width)
+                self.grid[r][c].walls
+                for c in range(self.width)
             ]
-            for y in range(self.height)
+            for r in range(self.height)
         ]
 
-    # def solve(self) -> str:
-    #     """Return the shortest solution path from entry to exitt."""
-    #     return MazeSolver.find_shortest_path(
-    #         self.get_grid(),
-    #         self.entry,
-    #         self.exitt,
-    #     )
-
-    # todo: check perfect
+    def solve(self) -> str:
+        '''
+        Return the shortest solution path from entry to exitt
+        '''
+        return MazeSolver.find_shortest_path(
+            self.get_grid(),
+            self.entry,
+            self.exitt,
+        )
