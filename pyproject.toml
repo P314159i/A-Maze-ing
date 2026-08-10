@@ -32,11 +32,3 @@ exclude = [
     "__pycache__",
     ".pytest_cache",
 ]
-
-[tool.flake8]
-exclude = [
-    ".venv",
-    "__pycache__",
-    ".pytest_cache",
-    ".git",
-]

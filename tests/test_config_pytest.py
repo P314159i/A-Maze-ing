@@ -1,10 +1,9 @@
 """Tests for the maze configuration parser"""
 
-from os import error
-
 import pytest
 
 from pathlib import Path
+
 from src.config_parser import ConfigParser, ConfigError, MazeConfig
 
 
@@ -35,8 +34,8 @@ def test_parse_valid_config(tmp_path: Path) -> None:
 
     assert config.width == 20
     assert config.height == 18
-    assert config.entry == (0, 0)
-    assert config.exit == (19, 17)
+    assert config.entry_point == (0, 0)
+    assert config.exit_point == (19, 17)
     assert config.output_file == "maze.txt"
     assert config.perfect is False
     assert config.seed == 42
@@ -81,8 +80,8 @@ def test_comment_and_blank_lines_are_ignored(tmp_path: Path) -> None:
 
     assert config.width == 5
     assert config.height == 4
-    assert config.entry == (0, 0)
-    assert config.exit == (4, 3)
+    assert config.entry_point == (0, 0)
+    assert config.exit_point == (4, 3)
     assert config.output_file == "maze.txt"
     assert config.perfect is False
 
@@ -194,6 +193,7 @@ def test_coordinate_components_cannot_be_empty(
 ) -> None:
     pass
 
+
 def test_coordinate_components_must_be_integers(
     tmp_path: Path,
     coordinate: str,
@@ -217,6 +217,8 @@ pytest.mark.parametrize(
         "0,18"
     ],
 )
+
+
 def test_entry_outside_maze_raises_error(
     tmp_path: Path,
     entry: str,
@@ -233,6 +235,8 @@ pytest.mark.parametrize(
         "19,18"
     ],
 )
+
+
 def test_exit_outside_maze_raises_error(
     tmp_path: Path,
     exit_position: str,

@@ -7,9 +7,9 @@ from src.config_parser import ConfigError, MazeConfig, ConfigParser
 
 from src.mazegen.maze_generator import Maze
 
-from src.mazegen.solver import MazeSolver, SolverError
+from src.mazegen.solver import MazeSolver
 
-from src.output_writer import OutputError, OutputWriter
+from src.output_writer import OutputWriter
 
 
 def get_config_file_name() -> str:
@@ -21,7 +21,6 @@ def get_config_file_name() -> str:
 
 def main() -> int:
     """Run the A-Maze-ing program."""
-    check_grid_order()
     try:
         filename: str = get_config_file_name()
         config: MazeConfig = ConfigParser.parse(filename)

@@ -1,0 +1,2 @@
+[flake8]
+exclude = .git,.venv,venv,build,dist,pyproject.toml,*.pdf,*.txt,*.md,Makefile

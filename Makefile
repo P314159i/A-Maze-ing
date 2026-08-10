@@ -1,7 +1,6 @@
 PYTHON := python3
 PIP := $(PYTHON) -m pip
 MAIN := a_maze_ing.py
-PYTHON := python3
 LINT_TARGETS := a_maze_ing.py  src
 CONFIG ?= config.txt
 

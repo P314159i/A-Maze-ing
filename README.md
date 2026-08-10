@@ -71,7 +71,7 @@ generate() uses DFS to carve the maze.
 grid = maze.get_grid()
 ```
 
-grid is a 2D list of wall integers from 0-15.
+grid is a 2D" list of wall integers from 0-15.
 
 order starts top-left, goes row by row,
 and ends bottom-right.
@@ -152,3 +152,5 @@ for building the standalone package run:
 .DFS does not open walls completely at random: it always moves from a visited cell to an unvisited neighboring cell, opens the wall between them, and keeps doing that until every cell has been visited.
 
 That guarantees connectivity because every newly visited cell is connected to the already-connected maze.
+
+todo: python3 -m pytest tests/test_maze_generator.py
