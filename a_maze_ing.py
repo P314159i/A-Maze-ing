@@ -21,7 +21,7 @@ def get_config_file_name() -> str:
 
 def main() -> int:
     """Run the A-Maze-ing program."""
-
+    check_grid_order()
     try:
         filename: str = get_config_file_name()
         config: MazeConfig = ConfigParser.parse(filename)

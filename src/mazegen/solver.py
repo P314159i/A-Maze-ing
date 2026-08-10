@@ -207,8 +207,8 @@ class MazeSolver:
         entry_point: Coordinate,
         exit_point: Coordinate
     ) -> str:
-        """Reconstruct the path found by BFS.
-
+        """Reconstruct the path found by BFS
+    
         BFS stores the previous cell and movement direction for every
         visited coordinate. This method starts at the exit, follows the
         stored parent information back to the entry, and reverses the

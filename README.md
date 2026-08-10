@@ -148,5 +148,7 @@ for building the standalone package run:
 	python3 -m build --sdist
   it automatically puts the .tar.gz inside a "dist" folder, you should copy it to the root.
 
+## How does dfs make sure there is at least one path?:
+.DFS does not open walls completely at random: it always moves from a visited cell to an unvisited neighboring cell, opens the wall between them, and keeps doing that until every cell has been visited.
 
-.
+That guarantees connectivity because every newly visited cell is connected to the already-connected maze.
