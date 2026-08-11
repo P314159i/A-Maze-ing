@@ -41,7 +41,9 @@ class TerminalVisualizer:
             maze.solve() if solved_path is None else solved_path
         )
         self.show_solution = True
+        self.solution_step_limit: int | None = None
         self.color_index = 0
+        self.solution_color_index = 2
         self.scroll_x = 0
         self.scroll_y = 0
         self.message = "Shortest path shown."
@@ -76,15 +78,27 @@ class TerminalVisualizer:
             elif key == curses.KEY_RIGHT:
                 self.scroll_x += 4
             elif key in (ord("p"), ord("P")):
+                self.solution_step_limit = None
                 self.show_solution = not self.show_solution
                 state = "shown" if self.show_solution else "hidden"
                 self.message = f"Shortest path {state}."
+            elif key in (ord("a"), ord("A")):
+                if self._animate_solution(screen):
+                    return
             elif key in (ord("c"), ord("C")):
                 self.color_index = (
                     self.color_index + 1
                 ) % len(COLOR_NAMES)
                 self.message = (
                     f"Wall color: {COLOR_NAMES[self.color_index]}."
+                )
+            elif key in (ord("v"), ord("V")):
+                self.solution_color_index = (
+                    self.solution_color_index + 1
+                ) % len(COLOR_NAMES)
+                self.message = (
+                    "Solution color: "
+                    f"{COLOR_NAMES[self.solution_color_index]}."
                 )
             elif key in (ord("r"), ord("R")):
                 self._regenerate(use_configured_seed=False)
@@ -104,6 +118,7 @@ class TerminalVisualizer:
         self.scroll_x = 0
         self.scroll_y = 0
         self.show_solution = True
+        self.solution_step_limit = None
 
         if use_configured_seed:
             self.message = (
@@ -112,6 +127,31 @@ class TerminalVisualizer:
             )
         else:
             self.message = "New random maze; shortest path shown."
+
+    def _animate_solution(self, screen: curses.window) -> bool:
+        """Animate the solver path and report whether quit was pressed."""
+        self.show_solution = True
+        self.message = "Animating solution; press any key to skip."
+        quit_requested = False
+        screen.nodelay(True)
+
+        try:
+            for step in range(len(self.solved_path) + 1):
+                self.solution_step_limit = step
+                self._draw_curses(screen)
+
+                key = screen.getch()
+                if key != -1:
+                    quit_requested = key in (ord("q"), ord("Q"))
+                    break
+
+                curses.napms(45)
+        finally:
+            screen.nodelay(False)
+            self.solution_step_limit = None
+
+        self.message = "Solution animation complete."
+        return quit_requested
 
     def _setup_colors(self) -> None:
         """Initialize every selectable wall color."""
@@ -148,6 +188,13 @@ class TerminalVisualizer:
 
         return curses.color_pair(self.color_index + 1)
 
+    def _solution_color(self) -> int:
+        """Return the currently selected solution-path style."""
+        if not curses.has_colors():
+            return curses.A_BOLD
+
+        return curses.color_pair(self.solution_color_index + 1)
+
     def _solution_cells(self) -> set[Coordinate]:
         """Return the cells crossed by the shortest solution path."""
         if not self.show_solution:
@@ -162,7 +209,13 @@ class TerminalVisualizer:
             "W": (-1, 0),
         }
 
-        for direction in self.solved_path:
+        for step, direction in enumerate(self.solved_path, start=1):
+            if (
+                self.solution_step_limit is not None
+                and step > self.solution_step_limit
+            ):
+                break
+
             dx, dy = moves[direction]
             x += dx
             y += dy
@@ -206,6 +259,7 @@ class TerminalVisualizer:
         grid = self.maze.get_grid()
         solution_cells = self._solution_cells()
         wall_color = self._wall_color()
+        solution_color = self._solution_color()
 
         for y in range(self.maze.height):
             top_row = y * 2
@@ -235,8 +289,23 @@ class TerminalVisualizer:
                     if (y, x) in self.maze.pattern_cells
                     else f" {symbol} "
                 )
+                cell_style = (
+                    solution_color
+                    if (
+                        (x, y) in solution_cells
+                        and (x, y) not in (
+                            self.maze.entry,
+                            self.maze.exitt,
+                        )
+                    )
+                    else curses.A_NORMAL
+                )
                 self._safe_addstr(
-                    pad, middle_row, column + 1, cell_contents
+                    pad,
+                    middle_row,
+                    column + 1,
+                    cell_contents,
+                    cell_style,
                 )
 
             final_column = self.maze.width * 4
@@ -298,10 +367,13 @@ class TerminalVisualizer:
 
         legend = "E entry | X exit | * shortest path | ▓ closed 42 cell"
         controls = (
-            "Arrows scroll | P path | R new | S seed | C color | Q quit"
+            "Arrows | P path | A animate | R new | S seed | "
+            "C walls | V path | Q quit"
         )
         status = (
-            f"Color: {COLOR_NAMES[self.color_index]} | {self.message}"
+            f"Walls: {COLOR_NAMES[self.color_index]} | "
+            f"Path: {COLOR_NAMES[self.solution_color_index]} | "
+            f"{self.message}"
         )
 
         try:
