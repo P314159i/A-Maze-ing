@@ -23,7 +23,11 @@ COLOR_NAMES: tuple[str, ...] = (
     "yellow",
     "blue",
     "cyan",
+    "magenta",
 )
+
+START_COLOR_INDEX = 6
+EXIT_COLOR_INDEX = 1
 
 
 class TerminalVisualizer:
@@ -173,6 +177,7 @@ class TerminalVisualizer:
             curses.COLOR_YELLOW,
             curses.COLOR_BLUE,
             curses.COLOR_CYAN,
+            curses.COLOR_MAGENTA,
         )
 
         for pair_number, color in enumerate(colors, start=1):
@@ -195,13 +200,35 @@ class TerminalVisualizer:
 
         return curses.color_pair(self.solution_color_index + 1)
 
-    def _solution_cells(self) -> set[Coordinate]:
-        """Return the cells crossed by the shortest solution path."""
+    def _start_color(self) -> int:
+        """Return the magenta entry-cell background style."""
+        if not curses.has_colors():
+            return curses.A_REVERSE | curses.A_BOLD
+
+        return (
+            curses.color_pair(START_COLOR_INDEX + 1)
+            | curses.A_REVERSE
+            | curses.A_BOLD
+        )
+
+    def _exit_color(self) -> int:
+        """Return the red exit-cell background style."""
+        if not curses.has_colors():
+            return curses.A_REVERSE | curses.A_BOLD
+
+        return (
+            curses.color_pair(EXIT_COLOR_INDEX + 1)
+            | curses.A_REVERSE
+            | curses.A_BOLD
+        )
+
+    def _solution_coordinates(self) -> list[Coordinate]:
+        """Return the ordered cells crossed by the visible solution."""
         if not self.show_solution:
-            return set()
+            return []
 
         x, y = self.maze.entry
-        cells: set[Coordinate] = {(x, y)}
+        coordinates: list[Coordinate] = [(x, y)]
         moves: dict[str, Coordinate] = {
             "N": (0, -1),
             "E": (1, 0),
@@ -219,9 +246,13 @@ class TerminalVisualizer:
             dx, dy = moves[direction]
             x += dx
             y += dy
-            cells.add((x, y))
+            coordinates.append((x, y))
 
-        return cells
+        return coordinates
+
+    def _solution_cells(self) -> set[Coordinate]:
+        """Return the cells crossed by the visible solution path."""
+        return set(self._solution_coordinates())
 
     def _cell_symbol(
         self,
@@ -257,9 +288,12 @@ class TerminalVisualizer:
     def _draw_maze(self, pad: curses.window) -> None:
         """Draw all walls and cell symbols onto a curses pad."""
         grid = self.maze.get_grid()
-        solution_cells = self._solution_cells()
+        solution_coordinates = self._solution_coordinates()
+        solution_cells = set(solution_coordinates)
         wall_color = self._wall_color()
         solution_color = self._solution_color()
+        start_color = self._start_color()
+        exit_color = self._exit_color()
 
         for y in range(self.maze.height):
             top_row = y * 2
@@ -284,22 +318,28 @@ class TerminalVisualizer:
                     )
 
                 symbol = self._cell_symbol(x, y, solution_cells)
-                cell_contents = (
-                    PATTERN_FILL
-                    if (y, x) in self.maze.pattern_cells
-                    else f" {symbol} "
-                )
-                cell_style = (
-                    solution_color
-                    if (
-                        (x, y) in solution_cells
-                        and (x, y) not in (
-                            self.maze.entry,
-                            self.maze.exitt,
-                        )
+                is_solution_cell = (
+                    (x, y) in solution_cells
+                    and (x, y) not in (
+                        self.maze.entry,
+                        self.maze.exitt,
                     )
-                    else curses.A_NORMAL
                 )
+                if (y, x) in self.maze.pattern_cells:
+                    cell_contents = PATTERN_FILL
+                elif is_solution_cell:
+                    cell_contents = HORIZONTAL_WALL
+                else:
+                    cell_contents = f" {symbol} "
+
+                if (x, y) == self.maze.entry:
+                    cell_style = start_color
+                elif (x, y) == self.maze.exitt:
+                    cell_style = exit_color
+                elif is_solution_cell:
+                    cell_style = solution_color
+                else:
+                    cell_style = curses.A_NORMAL
                 self._safe_addstr(
                     pad,
                     middle_row,
@@ -340,6 +380,34 @@ class TerminalVisualizer:
             wall_color,
         )
 
+        for current, following in zip(
+            solution_coordinates,
+            solution_coordinates[1:],
+        ):
+            current_x, current_y = current
+            following_x, following_y = following
+
+            if current_y == following_y:
+                connector_column = max(current_x, following_x) * 4
+                connector_row = current_y * 2 + 1
+                self._safe_addstr(
+                    pad,
+                    connector_row,
+                    connector_column,
+                    WALL,
+                    solution_color,
+                )
+            else:
+                connector_row = max(current_y, following_y) * 2
+                connector_column = current_x * 4 + 1
+                self._safe_addstr(
+                    pad,
+                    connector_row,
+                    connector_column,
+                    HORIZONTAL_WALL,
+                    solution_color,
+                )
+
     def _draw_curses(self, screen: curses.window) -> None:
         """Draw a scrollable maze plus its legend and controls."""
         screen.erase()
@@ -365,7 +433,10 @@ class TerminalVisualizer:
         rows_to_show = min(view_height, pad_height - self.scroll_y)
         columns_to_show = min(view_width, pad_width - self.scroll_x)
 
-        legend = "E entry | X exit | * shortest path | ▓ closed 42 cell"
+        legend = (
+            "E entry (magenta) | X exit (red) | "
+            "█ shortest path | ▓ closed 42 cell"
+        )
         controls = (
             "Arrows | P path | A animate | R new | S seed | "
             "C walls | V path | Q quit"
