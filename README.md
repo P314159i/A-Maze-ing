@@ -1,8 +1,10 @@
 # A-Maze-ing project
 # README.md for class Maze of maze-generator.py
 
-here goes the rest
-
+## RESOURCES
+here:
+- https ://flake8.pycqa.org/en/stable/internal/option_handling.html
+- 
 
 ## To Run:
 python a_maze_ing.py config.txt > result.txt 2> errors.txt
