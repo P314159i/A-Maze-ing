@@ -10,11 +10,8 @@ run:
 debug:
 	$(PYTHON) -m pdb $(MAIN) $(CONFIG)
 
-# need to create the requirements.txt file in the end
 install:
 	$(PIP) install -r requirements.txt
-
-lint:
 
 lint:
 	$(PYTHON) -m flake8 $(LINT_TARGETS)
