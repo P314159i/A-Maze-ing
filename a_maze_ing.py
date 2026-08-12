@@ -75,10 +75,6 @@ def main() -> int:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    except KeyboardInterrupt:
-        print("\nProgram interrupted by user.", file=sys.stderr)
-        return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

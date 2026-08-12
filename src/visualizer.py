@@ -438,7 +438,7 @@ class TerminalVisualizer:
             "█ shortest path | ▓ closed 42 cell"
         )
         controls = (
-            "Arrows | P path | A animate | R new | S seed | "
+            "Arrows scroll | P path | A animate | R new | S seed | "
             "C walls | V path | Q quit"
         )
         status = (

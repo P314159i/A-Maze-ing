@@ -884,6 +884,7 @@ class Maze:
 
         return False
 
+
     def _place_42_pattern(self) -> None:
         """Place the closed-cell 42 pattern inside the maze."""
 
@@ -908,111 +909,54 @@ class Maze:
             (exit_r, exit_c),
         }
 
-        # PERFECT=False requires the centre to stay open
         if not self.perfect:
             protected.update(self._center_cells())
 
-        safe_patterns: list[set[tuple[int, int]]] = []
-        interior_patterns: list[set[tuple[int, int]]] = []
-
-        for top in range(
-            self.height - pattern_height + 1,
-        ):
-            for left in range(
-                self.width - pattern_width + 1,
-            ):
-
-                pattern_cells: set[tuple[int, int]] = set()
-
-                for pattern_row, line in enumerate(PATTERN_42):
-                    for pattern_col, value in enumerate(line):
-
-                        if value == "1":
-                            pattern_cells.add(
-                                (
-                                    top + pattern_row,
-                                    left + pattern_col,
-                                )
-                            )
-
-                if pattern_cells & protected:
-                    continue
-
-                if not self.perfect:
-                    if not self._required_cells_have_room(
-                        pattern_cells
-                    ):
-                        continue
-
-                if not self._pattern_keeps_maze_connected(
-                    pattern_cells
-                ):
-                    continue
-
-                safe_patterns.append(pattern_cells)
-
-                has_outer_corridor = (
-                    top > 0
-                    and left > 0
-                    and top + pattern_height < self.height
-                    and left + pattern_width < self.width
-                )
-
-                if has_outer_corridor:
-                    interior_patterns.append(pattern_cells)
-
-        if not safe_patterns:
-            print(
-                "Error: no safe place for the 42 pattern",
-                file=sys.stderr,
+        max_attempts = max(30, (self.width + self.height) // 2)
+        for _ in range(max_attempts):
+            top = self.rndm.randrange(
+                0,
+                self.height - pattern_height + 1,
             )
+            left = self.rndm.randrange(
+                0,
+                self.width - pattern_width + 1,
+            )
+
+            pattern_cells: set[tuple[int, int]] = set()
+
+            for pattern_row, line in enumerate(PATTERN_42):
+                for pattern_col, value in enumerate(line):
+                    if value == "1":
+                        pattern_cells.add(
+                            (
+                                top + pattern_row,
+                                left + pattern_col,
+                            )
+                        )
+
+            if pattern_cells & protected:
+                continue
+
+            if not self.perfect:
+                if not self._required_cells_have_room(pattern_cells):
+                    continue
+
+            if not self._pattern_keeps_maze_connected(pattern_cells):
+                continue
+
+            self.pattern_cells = pattern_cells
+
+            for row, col in self.pattern_cells:
+                self.grid[row][col].walls = 0b1111
+
             return
 
-        # Prefer a full corridor around the pattern. Random selection avoids
-        # forcing the same shortest-path shape for every generated maze.
-        placement_pool = interior_patterns or safe_patterns
-        self.pattern_cells = self.rndm.choice(placement_pool)
-
-        for row, col in self.pattern_cells:
-            self.grid[row][col].walls = 0b1111
-
-    def _required_cells_have_room(
-            self,
-            pattern_cells: set[tuple[int, int]],
-            ) -> bool:
-        """Check that required corridor cells still have two neighbors."""
-
-        required = self._required_non_perfect_cells()
-
-        directions = (
-            (-1, 0),
-            (1, 0),
-            (0, -1),
-            (0, 1),
+        print(
+            "Error: no safe place for the 42 pattern",
+            file=sys.stderr,
         )
 
-        for row, col in required:
-
-            if (row, col) in pattern_cells:
-                return False
-
-            available_neighbors = 0
-
-            for row_delta, col_delta in directions:
-                neighbor_row = row + row_delta
-                neighbor_col = col + col_delta
-
-                if (
-                    0 <= neighbor_row < self.height
-                    and 0 <= neighbor_col < self.width
-                    and (neighbor_row, neighbor_col) not in pattern_cells
-                ):
-                    available_neighbors += 1
-
-            if available_neighbors < 2:
-                return False
-
-        return True
 
     def _pattern_keeps_maze_connected(
             self,
