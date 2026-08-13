@@ -9,6 +9,8 @@ here:
 - https://docs.python.org/3/tutorial/datastructures.html
 - https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
 - https://www.youtube.com/watch?v=81ebWToAnvA
+- https://www.geeksforgeeks.org/python/diagnosing-and-fixing-memory-leaks-in-python/
+
 
 
 ## To Run:
