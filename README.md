@@ -3,8 +3,13 @@
 
 ## RESOURCES
 here:
-- https ://flake8.pycqa.org/en/stable/internal/option_handling.html
+- https://flake8.pycqa.org/en/stable/internal/option_handling.html
 - https://pynative.com/python-convert-decimal-number-to-hexadecimal-and-vice-versa/#h-convert-decimal-to-hexadecimal
+- https://pipedream.com/docs/workflows/building-workflows/code/python/using-data-stores
+- https://docs.python.org/3/tutorial/datastructures.html
+- https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
+- https://www.youtube.com/watch?v=81ebWToAnvA
+
 
 ## To Run:
 python a_maze_ing.py config.txt > result.txt 2> errors.txt
