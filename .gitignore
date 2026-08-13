@@ -17,6 +17,9 @@ venv/
 env/
 ENV/
 
+# Documentation
+/docs
+
 # Build and packaging files
 build/
 dist/
