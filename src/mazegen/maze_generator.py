@@ -885,42 +885,42 @@ class Maze:
         return False
 
     def _required_cells_have_room(
-    self,
-    pattern_cells: set[tuple[int, int]],
+        self,
+        pattern_cells: set[tuple[int, int]],
     ) -> bool:
-            """Check that required non-perfect cells still have room to connect."""
+        """Check that required cells have room to connect."""
 
-            required = self._required_non_perfect_cells()
+        required = self._required_non_perfect_cells()
 
-            for row, col in required:
-                free_neighbors = 0
+        for row, col in required:
+            free_neighbors = 0
 
-                directions = (
-                    (-1, 0),
-                    (1, 0),
-                    (0, -1),
-                    (0, 1),
-                )
+            directions = (
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+            )
 
-                for row_delta, col_delta in directions:
-                    neighbor_row = row + row_delta
-                    neighbor_col = col + col_delta
+            for row_delta, col_delta in directions:
+                neighbor_row = row + row_delta
+                neighbor_col = col + col_delta
 
-                    if not (
-                        0 <= neighbor_row < self.height
-                        and 0 <= neighbor_col < self.width
-                    ):
-                        continue
+                if not (
+                    0 <= neighbor_row < self.height
+                    and 0 <= neighbor_col < self.width
+                ):
+                    continue
 
-                    if (neighbor_row, neighbor_col) in pattern_cells:
-                        continue
+                if (neighbor_row, neighbor_col) in pattern_cells:
+                    continue
 
-                    free_neighbors += 1
+                free_neighbors += 1
 
-                if free_neighbors < 2:
-                    return False
+            if free_neighbors < 2:
+                return False
 
-            return True
+        return True
 
     def _place_42_pattern(self) -> None:
         """Place the closed-cell 42 pattern inside the maze."""
