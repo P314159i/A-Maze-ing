@@ -1,8 +1,8 @@
-from .maze_generator import Maze, MazeError
+"""Reusable maze generation package."""
 
+from .maze_generator import Maze, MazeError
 from .solver import MazeSolver, SolverError
 
 # __all__ tells Python which names your module/package
-# intentionally exposes as its public API,
-# which also tells Flake8 to shut up
+# intentionally exposes as its public API.
 __all__ = ["Maze", "MazeError", "MazeSolver", "SolverError"]

@@ -51,7 +51,7 @@ class ConfigParser:
         if missing:
             raise ConfigError(
                 f"config file is missing mandatory keys: "
-                f"{", ".join(missing)}"
+                f"{', '.join(missing)}"
             )
 
         allowed: frozenset[str] = (

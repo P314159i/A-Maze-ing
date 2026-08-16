@@ -1,0 +1,16 @@
+Left:
+
+* Add package usage docstring to `src/mazegen/__init__.py`.
+* Wrap the long line in `test_solver.py`.
+* Put your actual 42 logins in `README.md`.
+* Make sure the new docstrings, Makefile, LICENSE, and README are copied into your real repo.
+* Run:
+
+  ```bash
+  make lint
+  make test
+  make run
+  ```
+* **Rebuild the `.tar.gz` after all final edits** and place the new `mazegen-*.tar.gz` at repo root.
+
+Then final submission check.

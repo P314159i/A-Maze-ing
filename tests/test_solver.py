@@ -1,6 +1,7 @@
-import pytest
-
+from typing import Any
 from src.mazegen.solver import MazeSolver, SolverError
+
+import pytest
 
 
 def test_find_shortest_path() -> None:
@@ -50,10 +51,10 @@ def test_invalid_maze_structure_raises_solver_error(
 def test_invalid_wall_values_raise_solver_error(wall_value: object) -> None:
     """Check that every cell uses an integer wall value from 0 to 15."""
 
-    maze = [[wall_value]]
+    maze: Any = [[wall_value]]
 
     with pytest.raises(SolverError, match="Invalid wall value"):
-        MazeSolver.find_shortest_path(maze, (0, 0), (0, 0))  # type: ignore[arg-type]
+        MazeSolver.find_shortest_path(maze, (0, 0), (0, 0))
 
 
 @pytest.mark.parametrize("entry", [(-1, 0), (1, 0), (0, -1), (0, 1)])

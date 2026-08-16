@@ -1,190 +1,267 @@
-# A-Maze-ing project
-# README.md for class Maze of maze-generator.py
+*This project has been created as part of the 42 curriculum by <pamohamm>, <pidi>.*
 
-## RESOURCES
-here:
-- https://flake8.pycqa.org/en/stable/internal/option_handling.html
-- https://pynative.com/python-convert-decimal-number-to-hexadecimal-and-vice-versa/#h-convert-decimal-to-hexadecimal
-- https://pipedream.com/docs/workflows/building-workflows/code/python/using-data-stores
-- https://docs.python.org/3/tutorial/datastructures.html
-- https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
-- https://www.youtube.com/watch?v=81ebWToAnvA
-- https://www.geeksforgeeks.org/python/diagnosing-and-fixing-memory-leaks-in-python/
+# A-Maze-ing
 
+## Description
 
+A-Maze-ing is a Python maze generator, solver, file exporter, and terminal visualizer.
+The program reads a configuration file, generates either a perfect maze or a playable
+non-perfect maze, finds a shortest path from entry to exit, writes the maze using the
+required hexadecimal wall encoding, and displays it interactively in the terminal.
 
-## To Run:
-python a_maze_ing.py config.txt > result.txt 2> errors.txt
-python a_maze_ing.py config.txt 2> errors.txt   # 2 is for stderr
-python a_maze_ing.py config.txt > result.txt    # 1 is for stdout
+The maze contains a visible `42` pattern made from fully closed cells whenever the maze
+is large enough to place it without breaking connectivity.
 
+## Instructions
 
-### Documentation with pdoc
-using google-style documentation for this project and you can use it with pdoc:
-pdoc a_maze_ing.py src
-or if you want to generate a .html file:
-pdoc a_maze_ing.py src -o docs
+### Requirements
 
-on macOS:
-open docs/index.html
+- Python 3.10 or newer
+- `pip`
 
-on Linux:
-xdg-open http://localhost:8080
+Install the development dependencies:
 
-or instead of that, you can:
-pdoc a_maze_ing.py src --no-browser
-
-and then for macOS:
-open -a "Google Chrome" http://localhost:8080
-
-and for Linux:
-google-chrome http://localhost:8080
-
-
-
-
-#### here's an example:
+```bash
+make install
 ```
-print("Maze generated")
-print("Bad configuration", file=sys.stderr)
+
+### Run
+
+The required command is:
+
+```bash
+python3 a_maze_ing.py config.txt
 ```
-then:
-Maze generated goes into result.txt
-Bad configuration still appears in the terminal
-That is useful because errors do not get mixed into normal program output.
 
+or through the Makefile:
 
-## Tests
-python -m pytest
-python -m pytest -v
-python -m pytest -vv
+```bash
+make run
+```
 
-python -m unittest discover -s tests
-python -m unittest discover -s tests -v
+To use a different configuration file:
 
-## Reusable Maze Generator
+```bash
+make run CONFIG=path/to/config.txt
+```
 
-the Maze class is the reusable part of the project.
-it creates the grid, generates the maze using DFS,
-gives access to the maze wall values, and gives access
-to the shortest solution through the solver.
+### Development commands
 
-### make a Maze
+```bash
+make debug        # run with pdb
+make test         # run pytest
+make lint         # run flake8 and mypy with the required flags
+make lint-strict  # optional strict mypy check
+make clean        # remove caches and build artifacts
+```
 
-first instantiate the class:
+### Build the reusable package
+
+Install the standard Python build frontend if necessary:
+
+```bash
+python3 -m pip install build
+```
+
+Build the source distribution:
+
+```bash
+python3 -m build --sdist
+```
+
+The build tool writes the archive to `dist/`. For submission, copy the generated
+`mazegen-*.tar.gz` file to the repository root:
+
+```bash
+cp dist/mazegen-*.tar.gz .
+```
+
+The package can then be installed with pip, for example:
+
+```bash
+python3 -m pip install ./mazegen-1.0.0.tar.gz
+```
+
+## Configuration file
+
+The configuration file contains one `KEY=VALUE` pair per line. Empty lines and lines
+starting with `#` are ignored.
+
+Example:
+
+```text
+WIDTH=20
+HEIGHT=15
+ENTRY=0,0
+EXIT=19,14
+OUTPUT_FILE=maze.txt
+PERFECT=True
+SEED=42
+```
+
+### Supported keys
+
+| Key | Required | Format | Description |
+| --- | --- | --- | --- |
+| `WIDTH` | Yes | positive integer | Maze width in cells |
+| `HEIGHT` | Yes | positive integer | Maze height in cells |
+| `ENTRY` | Yes | `x,y` | Entry coordinates inside the maze |
+| `EXIT` | Yes | `x,y` | Exit coordinates inside the maze; must differ from `ENTRY` |
+| `OUTPUT_FILE` | Yes | filename/path | File where the encoded maze is written |
+| `PERFECT` | Yes | `True` or `False` | Selects perfect or non-perfect generation |
+| `SEED` | No | integer | Makes generation reproducible |
+
+Unknown keys, duplicate keys, malformed values, missing required keys, invalid
+coordinates, and invalid dimensions are rejected with a clear configuration error.
+
+## Maze generation algorithm
+
+The generator uses a randomized depth-first search with backtracking. It starts from the
+configured entry cell, repeatedly visits an unvisited neighbouring cell, opens the wall
+between the two cells, and backtracks when no unvisited neighbour remains.
+
+This algorithm was chosen because it naturally creates a connected spanning tree. That
+makes it a direct fit for `PERFECT=True`, where the maze must contain no loops and
+therefore has exactly one route between any two reachable corridor cells. A dedicated
+`random.Random` instance allows the same seed and parameters to reproduce the same
+maze.
+
+Before carving, the generator reserves fully closed cells for the `42` pattern when a
+safe placement exists. For `PERFECT=False`, additional passages are opened after the
+base maze is generated. The generator validates that the resulting board stays
+connected, avoids 3x3 open areas, contains at least two independent loops and multiple
+entry-to-exit routes, and keeps the required corner and centre areas usable.
+
+## Solver
+
+`MazeSolver` uses breadth-first search (BFS) to find a shortest path from entry to exit.
+The returned solution is a string made from `N`, `E`, `S`, and `W` directions.
+
+## Output format
+
+Each maze cell is written as one hexadecimal digit. Its four low bits represent closed
+walls:
+
+| Bit | Direction |
+| --- | --- |
+| 0 | North |
+| 1 | East |
+| 2 | South |
+| 3 | West |
+
+A set bit means the wall is closed; a cleared bit means it is open. Cells are written
+row by row, with one maze row per line.
+
+After an empty line, the output contains:
+
+1. entry coordinates,
+2. exit coordinates,
+3. the shortest path as `N`, `E`, `S`, `W` characters.
+
+## Terminal visualization
+
+The curses-based terminal view displays the maze, entry, exit, and shortest path.
+
+Controls:
+
+- Arrow keys: scroll through large mazes
+- `P`: show or hide the shortest path
+- `A`: animate the shortest path
+- `C`: change wall colour
+- `V`: change solution-path colour
+- `R`: generate a new maze with a random seed
+- `S`: regenerate using the configured seed
+- `Q`: quit
+
+## Reusable `mazegen` package
+
+The reusable part of the project is the maze generation and solving package under
+`src/mazegen/`. After installation, its public API can be imported directly from
+`mazegen`.
+
+### Basic example
 
 ```python
+from mazegen import Maze
+
 maze = Maze(
     width=20,
     height=15,
-    myseed=42,
     entry=(0, 0),
-    exit=(19, 14)
+    exitt=(19, 14),
+    perfect=True,
+    myseed=42,
 )
-````
 
-width + height = size of maze
-
-myseed = random seed
-same seed + same settings = same generated maze
-
-entry = starting coordinate
-exit = destination coordinate
-
-### generate maze
-
-```python
 maze.generate()
-```
 
-generate() uses DFS to carve the maze.
-
-### get maze structure
-
-```python
 grid = maze.get_grid()
-```
-
-grid is a 2D" list of wall integers from 0-15.
-
-order starts top-left, goes row by row,
-and ends bottom-right.
-
-access a cell with:
-
-```python
-grid[y][x]
-```
-
-### get solution
-
-```python
 solution = maze.solve()
 ```
 
-solve() sends:
+`width` and `height` set the maze size. `myseed` controls reproducibility. `entry` and
+`exitt` are `(x, y)` coordinates, and `perfect` selects the generation mode.
 
-* grid
-* entry
-* exit
+`get_grid()` returns the generated structure as a two-dimensional list of integer wall
+values. `solve()` returns a shortest valid path as a string of direction characters.
 
-to MazeSolver.find_shortest_path()
+## Team and project management
 
-solver uses BFS and returns the shortest path
-as N, E, S, W characters.
+### Roles
 
-```
+- **Parvin Ghasemi** - primary work on configuration parsing, output handling, testing,
+  integration, and visualizer improvements.
+- **Parvin Diyanati** - primary work on maze generation, solving, interactive
+  visualization, and integration.
 
-This covers the specific documentation points required in Chapter VI. :contentReference[oaicite:1]{index=1}
-```
+Both members worked on integration, debugging, review, and final project compliance.
 
+### Planning and evolution
 
-** * `__init__.py` makes a folder behave like one Python package and can expose selected names cleanly.
+The project began with separate work on parsing, maze generation, solving, and output.
+As the modules were integrated, work shifted toward validating interactions between them,
+meeting the perfect/non-perfect maze constraints, improving the terminal visualizer, and
+adding regression tests. The final phase focused on edge cases, packaging, linting,
+licensing, and documentation.
 
-* We group files in `mazegen/` to keep the reusable package in one folder, and to make __init__ inside of it, so that we can first refer to the folder in .toml file to make the package isntead of seperately, but more importantly when wanting to re-use the class Maze, instead of importing files and classes like:
+### What worked well
 
-	from maze_generator import Maze
-	from solver import MazeSolver
-just import:
-	from mazegen import Maze
-which imports mazegen (both files) then uses Maze class
+The modular structure made it possible to develop and test parsing, generation, solving,
+output, and visualization independently before integrating them. Automated tests helped
+catch regressions during later maze-generator and visualizer changes.
 
+### What could be improved
 
+Future work should integrate feature branches earlier, keep tests complete as each feature
+is introduced, and maintain packaging and documentation continuously instead of leaving
+them to the final phase.
 
+### Tools used
 
+- Git and GitHub for version control and collaboration
+- pytest for automated tests
+- flake8 for style checks
+- mypy for static type checking
+- Python `build` and setuptools for the reusable package
+- `curses` for terminal visualization
+- pdoc during development for inspecting generated API documentation
 
-pyproject.toml is a configuration file that different tools read when you run those tools.
+## Resources
 
-For your file:
+### References
 
-python3 -m build reads [build-system] and [project].
-pytest reads [tool.pytest.ini_options].
-mypy reads [tool.mypy].
-flake8 normally does not read [tool.flake8] unless extra support is added.
+- Python data structures: https://docs.python.org/3/tutorial/datastructures.html
+- Python `random`: https://docs.python.org/3/library/random.html
+- Python `curses`: https://docs.python.org/3/library/curses.html
+- Python packaging tutorial: https://packaging.python.org/en/latest/tutorials/packaging-projects/
+- pytest documentation: https://docs.pytest.org/
+- flake8 documentation: https://flake8.pycqa.org/en/stable/
+- mypy documentation: https://mypy.readthedocs.io/en/stable/
 
+### Use of AI
 
+AI tools, including ChatGPT, were used as development support for reviewing test coverage, checking edge cases, identifying packaging and subject-compliance issues, and improving docstrings and README wording. Suggested changes were reviewed against the project code and validated with the project's tests rather than accepted without verification.
 
+## License
 
-the subject tells us several things the evaluator may check, but not the exact evaluation sheet.
-
-They can:
-
-run your program with config files;
-inspect the generated output;
-use maze_analyzer.py / Moulinette to check wall consistency, PERFECT=True, and playable non-perfect mazes;
-ask you to explain your code and decisions; the subject explicitly warns that not understanding your own code can fail the evaluation;
-ask for a small live modification, such as changing a function, display, or data structure within a few minutes.
-evaluate only what is actually committed in your Git repository.
-
-
-for building the standalone package run:
-	python3 -m pip install build
-	python3 -m build --sdist
-  it automatically puts the .tar.gz inside a "dist" folder, you should copy it to the root.
-
-## How does dfs make sure there is at least one path?:
-.DFS does not open walls completely at random: it always moves from a visited cell to an unvisited neighboring cell, opens the wall between them, and keeps doing that until every cell has been visited.
-
-That guarantees connectivity because every newly visited cell is connected to the already-connected maze.
-
-todo: python3 -m pytest, python3 -m mypy *, python3 -m flake8 *
+The reusable maze generator is distributed under the MIT License. See `LICENSE.md`.

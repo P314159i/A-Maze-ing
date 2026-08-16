@@ -2,16 +2,19 @@ from src.config_parser import MazeConfig
 
 
 class OutputError(Exception):
+    """Raised when maze output cannot be written to a file."""
     pass
 
 
 class OutputWriter:
+    """Write the generated maze and solution to the configured output file."""
     @staticmethod
     def write_output(
         config: MazeConfig,
         maze: list[list[int]],
         solved_path: str,
     ) -> None:
+        """Write maze data, entry/exit points, and solved path to a file."""
         try:
             with open(config.output_file, "w") as output_file:
                 for row in maze:

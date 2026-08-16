@@ -22,6 +22,8 @@ class MazeError(RuntimeError):
 
 
 class Maze:
+    """Generate, validate, and solve perfect or non-perfect mazes."""
+
     class Cell:
         """Store one cell of the maze."""
 
