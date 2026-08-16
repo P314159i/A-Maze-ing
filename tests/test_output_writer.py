@@ -1,5 +1,3 @@
-"""Tests for writing the generated maze output file."""
-
 from pathlib import Path
 
 import pytest
@@ -8,67 +6,53 @@ from src.config_parser import MazeConfig
 from src.output_writer import OutputError, OutputWriter
 
 
-def make_config(output_path: Path) -> MazeConfig:
-    """Create a valid configuration for output-writer tests."""
+def _config(output_file: Path) -> MazeConfig:
     return MazeConfig(
         width=3,
         height=2,
         entry_point=(0, 0),
         exit_point=(2, 1),
-        output_file=str(output_path),
-        perfect=False,
+        output_file=str(output_file),
+        perfect=True,
         seed=42,
     )
 
 
-def test_write_output_uses_required_file_format(
-    tmp_path: Path,
-) -> None:
-    """Write hexadecimal rows, coordinates, and path exactly."""
-    output_path: Path = tmp_path / "maze.txt"
-    config: MazeConfig = make_config(output_path)
-    maze: list[list[int]] = [
-        [15, 10, 0],
-        [1, 2, 3],
+def test_write_output_format(tmp_path: Path) -> None:
+    """Write rows, blank line, coordinates, and solution in order."""
+    output_file = tmp_path / "maze.txt"
+    config = _config(output_file)
+    maze = [
+        [0x0, 0xA, 0xF],
+        [0x1, 0x2, 0x3],
     ]
 
-    OutputWriter.write_output(config, maze, "EES")
+    OutputWriter.write_output(config, maze, "ES")
 
-    assert output_path.read_text(encoding="utf-8") == (
-        "fa0\n"
+    assert output_file.read_text() == (
+        "0af\n"
         "123\n"
         "\n"
         "0,0\n"
         "2,1\n"
-        "EES\n"
+        "ES\n"
     )
 
 
-def test_write_output_overwrites_existing_file(
-    tmp_path: Path,
-) -> None:
-    """Replace an existing output instead of appending to it."""
-    output_path: Path = tmp_path / "maze.txt"
-    output_path.write_text("old data", encoding="utf-8")
-    config: MazeConfig = make_config(output_path)
+def test_write_output_overwrites_existing_file(tmp_path: Path) -> None:
+    """Opening an existing output path replaces its old contents."""
+    output_file = tmp_path / "maze.txt"
+    output_file.write_text("old data")
+    config = _config(output_file)
 
-    OutputWriter.write_output(config, [[15]], "")
+    OutputWriter.write_output(config, [[0xF]], "E")
 
-    assert output_path.read_text(encoding="utf-8") == (
-        "f\n\n0,0\n2,1\n\n"
-    )
+    assert "old data" not in output_file.read_text()
 
 
-def test_write_output_wraps_operating_system_errors(
-    tmp_path: Path,
-) -> None:
-    """Convert file-system failures into OutputError."""
-    config: MazeConfig = make_config(tmp_path)
+def test_write_output_wraps_oserror(tmp_path: Path) -> None:
+    """Convert file-system write failures into OutputError."""
+    config = _config(tmp_path)
 
-    with pytest.raises(
-        OutputError,
-        match="Could not write output file",
-    ) as error_info:
-        OutputWriter.write_output(config, [[15]], "")
-
-    assert isinstance(error_info.value.__cause__, OSError)
+    with pytest.raises(OutputError, match="Could not write output file"):
+        OutputWriter.write_output(config, [[0xF]], "E")

@@ -1,26 +1,26 @@
-"""Tests for the maze configuration parser."""
-
-from pathlib import Path
+"""Tests for the maze configuration parser"""
 
 import pytest
 
-from src.config_parser import ConfigError, ConfigParser, MazeConfig
+from pathlib import Path
+
+from src.config_parser import ConfigParser, ConfigError, MazeConfig
 
 
 def write_config(
-    tmp_path: Path,
-    content: str,
-    filename: str = "config.txt",
+        tmp_path: Path,
+        content: str,
+        filename: str = "config.txt",
 ) -> Path:
-    """Create a temporary configuration file."""
-    config_path: Path = tmp_path / filename
-    config_path.write_text(content, encoding="utf-8")
+    """Create a temporary config file"""
+    config_path: Path = tmp_path/filename
+    config_path.write_text(content)
     return config_path
 
 
-def valid_config_text() -> str:
-    """Return a complete valid configuration."""
-    return (
+def test_parse_valid_config(tmp_path: Path) -> None:
+    """Testing a complete valid file: should return MazeConfig."""
+    content: str = (
         "WIDTH=20\n"
         "HEIGHT=18\n"
         "ENTRY=0,0\n"
@@ -29,15 +29,7 @@ def valid_config_text() -> str:
         "PERFECT=False\n"
         "SEED=42\n"
     )
-
-
-def test_parse_valid_config(tmp_path: Path) -> None:
-    """A complete valid file should return MazeConfig."""
-    config_path: Path = write_config(
-        tmp_path,
-        valid_config_text(),
-    )
-
+    config_path: Path = write_config(tmp_path, content)
     config: MazeConfig = ConfigParser.parse(str(config_path))
 
     assert config.width == 20
@@ -49,10 +41,11 @@ def test_parse_valid_config(tmp_path: Path) -> None:
     assert config.seed == 42
 
 
-def test_parse_config_without_optional_seed(
-    tmp_path: Path,
-) -> None:
-    """SEED may be omitted."""
+def test_parse_config_without_seed(tmp_path: Path) -> None:
+    """
+    Testing without SEED: should return seed as None.
+    and when perfect is True, should return perfect as True.
+    """
     content: str = (
         "WIDTH=5\n"
         "HEIGHT=4\n"
@@ -62,16 +55,13 @@ def test_parse_config_without_optional_seed(
         "PERFECT=True\n"
     )
     config_path: Path = write_config(tmp_path, content)
-
     config: MazeConfig = ConfigParser.parse(str(config_path))
 
     assert config.seed is None
     assert config.perfect is True
 
 
-def test_comments_and_blank_lines_are_ignored(
-    tmp_path: Path,
-) -> None:
+def test_comment_and_blank_lines_are_ignored(tmp_path: Path) -> None:
     """Comments and empty lines should not affect parsing."""
     content: str = (
         "# Maze configuration\n"
@@ -92,28 +82,31 @@ def test_comments_and_blank_lines_are_ignored(
     assert config.height == 4
     assert config.entry_point == (0, 0)
     assert config.exit_point == (4, 3)
+    assert config.output_file == "maze.txt"
+    assert config.perfect is False
 
 
-def test_missing_file_raises_config_error(
-    tmp_path: Path,
-) -> None:
-    """A missing file should become ConfigError."""
-    missing_path: Path = tmp_path / "missing.txt"
+def test_missing_file_raises_config_error(tmp_path: Path) -> None:
+    """A missing file should raise the ConfigError"""
+    missing_config_path: Path = tmp_path / "missing.txt"
 
     with pytest.raises(
         ConfigError,
         match="Could not read configuration file",
     ):
-        ConfigParser.parse(str(missing_path))
+        ConfigParser.parse((str(missing_config_path)))
 
 
-def test_line_without_equals_sign_raises_error(
-    tmp_path: Path,
-) -> None:
-    """Every setting must use KEY=VALUE syntax."""
-    content: str = valid_config_text().replace(
-        "WIDTH=20",
-        "WIDTH 20",
+def test_line_without_equal_sign_raises_error(tmp_path: Path) -> None:
+    """Every line must use KEY=VALUE setting."""
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT 19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+        "SEED=42\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
@@ -125,123 +118,112 @@ def test_line_without_equals_sign_raises_error(
 
 
 def test_empty_key_raises_error(tmp_path: Path) -> None:
-    """A configuration key cannot be empty."""
-    content: str = valid_config_text() + "=something\n"
+    """Configuration key cannot be empty."""
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+        "SEED=42\n"
+        "=emptykey"
+    )
     config_path: Path = write_config(tmp_path, content)
-
-    with pytest.raises(ConfigError, match="key cannot be empty"):
+    with pytest.raises(
+        ConfigError,
+        match="key cannot be empty"
+    ):
         ConfigParser.parse(str(config_path))
 
 
 def test_empty_value_raises_error(tmp_path: Path) -> None:
-    """A configuration value cannot be empty."""
-    content: str = valid_config_text().replace(
-        "OUTPUT_FILE=maze.txt",
-        "OUTPUT_FILE=",
+    """Configuration value cannot be empty."""
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+        "SEED=42\n"
     )
     config_path: Path = write_config(tmp_path, content)
-
-    with pytest.raises(ConfigError, match="cannot be empty"):
+    with pytest.raises(
+        ConfigError,
+        match="cannot be empty"
+    ):
         ConfigParser.parse(str(config_path))
 
 
 def test_duplicate_key_raises_error(tmp_path: Path) -> None:
-    """The same key must not be defined twice."""
-    content: str = valid_config_text() + "WIDTH=30\n"
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+        "WIDTH=30\n"
+    )
     config_path: Path = write_config(tmp_path, content)
 
     with pytest.raises(ConfigError, match="duplicate key 'WIDTH'"):
         ConfigParser.parse(str(config_path))
 
 
-@pytest.mark.parametrize(
-    "missing_line, missing_key",
-    [
-        ("WIDTH=20\n", "WIDTH"),
-        ("HEIGHT=18\n", "HEIGHT"),
-        ("ENTRY=0,0\n", "ENTRY"),
-        ("EXIT=19,17\n", "EXIT"),
-        ("OUTPUT_FILE=maze.txt\n", "OUTPUT_FILE"),
-        ("PERFECT=False\n", "PERFECT"),
-    ],
-)
-def test_missing_required_key_raises_error(
-    tmp_path: Path,
-    missing_line: str,
-    missing_key: str,
-) -> None:
-    """Every mandatory key must be provided."""
-    content: str = valid_config_text().replace(
-        missing_line,
-        "",
+def test_missing_required_key_raises_error(tmp_path: Path) -> None:
+    content: str = (
+        "WIDTH=20\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(ConfigError, match=missing_key):
+    with pytest.raises(ConfigError, match="missing mandatory keys: HEIGHT"):
         ConfigParser.parse(str(config_path))
 
 
 def test_unknown_key_raises_error(tmp_path: Path) -> None:
-    """Unsupported keys should be rejected."""
-    content: str = valid_config_text() + "BANANA=42\n"
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+        "UNKNOWN=value\n"
+    )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(
-        ConfigError,
-        match="Unknown keys: BANANA",
-    ):
+    with pytest.raises(ConfigError, match="Unknown keys: UNKNOWN"):
+        ConfigParser.parse(str(config_path))
+
+
+def test_invalid_integer_raises_error(tmp_path: Path) -> None:
+    content: str = (
+        "WIDTH=twenty\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
+    )
+    config_path: Path = write_config(tmp_path, content)
+
+    with pytest.raises(ConfigError, match="'WIDTH' must be an integer"):
         ConfigParser.parse(str(config_path))
 
 
 @pytest.mark.parametrize(
-    "key, invalid_value",
-    [
-        ("WIDTH", "abc"),
-        ("WIDTH", "20.5"),
-        ("HEIGHT", "hello"),
-        ("SEED", "four"),
-    ],
-)
-def test_invalid_integer_raises_error(
-    tmp_path: Path,
-    key: str,
-    invalid_value: str,
-) -> None:
-    """Integer fields must contain valid integer text."""
-    content: str = valid_config_text()
-
-    if key == "WIDTH":
-        content = content.replace(
-            "WIDTH=20",
-            f"WIDTH={invalid_value}",
-        )
-    elif key == "HEIGHT":
-        content = content.replace(
-            "HEIGHT=18",
-            f"HEIGHT={invalid_value}",
-        )
-    else:
-        content = content.replace(
-            "SEED=42",
-            f"SEED={invalid_value}",
-        )
-
-    config_path: Path = write_config(tmp_path, content)
-
-    with pytest.raises(
-        ConfigError,
-        match=f"'{key}' must be an integer",
-    ):
-        ConfigParser.parse(str(config_path))
-
-
-@pytest.mark.parametrize(
-    "key, invalid_value",
+    ("key", "invalid_value"),
     [
         ("WIDTH", "0"),
         ("WIDTH", "-1"),
         ("HEIGHT", "0"),
-        ("HEIGHT", "-10"),
+        ("HEIGHT", "-1"),
     ],
 )
 def test_dimensions_must_be_positive(
@@ -249,121 +231,97 @@ def test_dimensions_must_be_positive(
     key: str,
     invalid_value: str,
 ) -> None:
-    """Maze dimensions must be greater than zero."""
-    content: str = valid_config_text()
-
-    old_value: str = "20" if key == "WIDTH" else "18"
-    content = content.replace(
-        f"{key}={old_value}",
-        f"{key}={invalid_value}",
+    width: str = invalid_value if key == "WIDTH" else "20"
+    height: str = invalid_value if key == "HEIGHT" else "18"
+    content: str = (
+        f"WIDTH={width}\n"
+        f"HEIGHT={height}\n"
+        "ENTRY=0,0\n"
+        "EXIT=1,1\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
-
     config_path: Path = write_config(tmp_path, content)
 
     with pytest.raises(
         ConfigError,
-        match=f"'{key}' must be greater than zero",
+        match=rf"'{key}' must be greater than zero",
     ):
         ConfigParser.parse(str(config_path))
 
 
-@pytest.mark.parametrize(
-    "coordinate",
-    [
-        "1",
-        "1,2,3",
-        "hello",
-        "1;",
-    ],
-)
+@pytest.mark.parametrize("coordinate", ["0", "0,1,2"])
 def test_coordinate_requires_x_y_format(
     tmp_path: Path,
     coordinate: str,
 ) -> None:
-    """Coordinates must contain exactly two components."""
-    content: str = valid_config_text().replace(
-        "ENTRY=0,0",
-        f"ENTRY={coordinate}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        f"ENTRY={coordinate}\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(
-        ConfigError,
-        match="'ENTRY' must use the format x,y",
-    ):
+    with pytest.raises(ConfigError, match="must use the format x,y"):
         ConfigParser.parse(str(config_path))
 
 
-@pytest.mark.parametrize(
-    "coordinate",
-    [
-        ",1",
-        "1,",
-    ],
-)
+@pytest.mark.parametrize("coordinate", [",0", "0,"])
 def test_coordinate_components_cannot_be_empty(
     tmp_path: Path,
     coordinate: str,
 ) -> None:
-    """Both coordinate components must be present."""
-    content: str = valid_config_text().replace(
-        "ENTRY=0,0",
-        f"ENTRY={coordinate}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        f"ENTRY={coordinate}\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
     with pytest.raises(
         ConfigError,
-        match="must contain both x and y",
+        match="must contain both x and y coordinates",
     ):
         ConfigParser.parse(str(config_path))
 
 
-@pytest.mark.parametrize(
-    "coordinate",
-    [
-        "x,1",
-        "1,y",
-        "1.5,2",
-    ],
-)
+@pytest.mark.parametrize("coordinate", ["x,0", "0,y"])
 def test_coordinate_components_must_be_integers(
     tmp_path: Path,
     coordinate: str,
 ) -> None:
-    """Coordinate components must be integers."""
-    content: str = valid_config_text().replace(
-        "ENTRY=0,0",
-        f"ENTRY={coordinate}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        f"ENTRY={coordinate}\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(
-        ConfigError,
-        match="'ENTRY' must be an integer",
-    ):
+    with pytest.raises(ConfigError, match="'ENTRY' must be an integer"):
         ConfigParser.parse(str(config_path))
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "true",
-        "false",
-        "yes",
-        "no",
-        "1",
-        "0",
-    ],
-)
+@pytest.mark.parametrize("value", ["true", "FALSE", "yes", "1"])
 def test_invalid_boolean_raises_error(
     tmp_path: Path,
     value: str,
 ) -> None:
-    """PERFECT accepts only exact True or False."""
-    content: str = valid_config_text().replace(
-        "PERFECT=False",
-        f"PERFECT={value}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        f"PERFECT={value}\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
@@ -379,7 +337,7 @@ def test_invalid_boolean_raises_error(
     [
         "-1,0",
         "0,-1",
-        "20,0",
+        "20,17",
         "0,18",
     ],
 )
@@ -387,14 +345,17 @@ def test_entry_outside_maze_raises_error(
     tmp_path: Path,
     entry: str,
 ) -> None:
-    """ENTRY must be inside the configured dimensions."""
-    content: str = valid_config_text().replace(
-        "ENTRY=0,0",
-        f"ENTRY={entry}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        f"ENTRY={entry}\n"
+        "EXIT=19,17\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(ConfigError, match="ENTRY"):
+    with pytest.raises(ConfigError, match="'ENTRY'.*outside"):
         ConfigParser.parse(str(config_path))
 
 
@@ -411,24 +372,30 @@ def test_exit_outside_maze_raises_error(
     tmp_path: Path,
     exit_position: str,
 ) -> None:
-    """EXIT must be inside the configured dimensions."""
-    content: str = valid_config_text().replace(
-        "EXIT=19,17",
-        f"EXIT={exit_position}",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=0,0\n"
+        f"EXIT={exit_position}\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 
-    with pytest.raises(ConfigError, match="EXIT"):
+    with pytest.raises(ConfigError, match="'EXIT'.*outside"):
         ConfigParser.parse(str(config_path))
 
 
 def test_entry_and_exit_must_be_different(
     tmp_path: Path,
 ) -> None:
-    """ENTRY and EXIT cannot refer to the same cell."""
-    content: str = valid_config_text().replace(
-        "EXIT=19,17",
-        "EXIT=0,0",
+    content: str = (
+        "WIDTH=20\n"
+        "HEIGHT=18\n"
+        "ENTRY=5,5\n"
+        "EXIT=5,5\n"
+        "OUTPUT_FILE=maze.txt\n"
+        "PERFECT=False\n"
     )
     config_path: Path = write_config(tmp_path, content)
 

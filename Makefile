@@ -1,7 +1,5 @@
-PYTHON ?= python3
+PYTHON := python3
 PIP := $(PYTHON) -m pip
-FLAKE8 ?= flake8
-MYPY ?= mypy
 MAIN := a_maze_ing.py
 CONFIG ?= config.txt
 
@@ -15,14 +13,14 @@ install:
 	$(PIP) install -r requirements.txt
 
 lint:
-	$(FLAKE8) .
-	$(MYPY) . --warn-return-any --warn-unused-ignores \
+	$(PYTHON) -m flake8 .
+	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores \
 		--ignore-missing-imports --disallow-untyped-defs \
 		--check-untyped-defs
 
 lint-strict:
-	$(FLAKE8) .
-	$(MYPY) . --strict
+	$(PYTHON) -m flake8 .
+	$(PYTHON) -m mypy . --strict
 
 test:
 	$(PYTHON) -m pytest
