@@ -1,13 +1,47 @@
 # A-Maze-ing project
 # README.md for class Maze of maze-generator.py
 
-here goes the rest
+## RESOURCES
+here:
+- https://flake8.pycqa.org/en/stable/internal/option_handling.html
+- https://pynative.com/python-convert-decimal-number-to-hexadecimal-and-vice-versa/#h-convert-decimal-to-hexadecimal
+- https://pipedream.com/docs/workflows/building-workflows/code/python/using-data-stores
+- https://docs.python.org/3/tutorial/datastructures.html
+- https://mypy.readthedocs.io/en/stable/config_file.html#using-a-pyproject-toml-file
+- https://www.youtube.com/watch?v=81ebWToAnvA
+- https://www.geeksforgeeks.org/python/diagnosing-and-fixing-memory-leaks-in-python/
+
 
 
 ## To Run:
 python a_maze_ing.py config.txt > result.txt 2> errors.txt
 python a_maze_ing.py config.txt 2> errors.txt   # 2 is for stderr
 python a_maze_ing.py config.txt > result.txt    # 1 is for stdout
+
+
+### Documentation with pdoc
+using google-style documentation for this project and you can use it with pdoc:
+pdoc a_maze_ing.py src
+or if you want to generate a .html file:
+pdoc a_maze_ing.py src -o docs
+
+on macOS:
+open docs/index.html
+
+on Linux:
+xdg-open http://localhost:8080
+
+or instead of that, you can:
+pdoc a_maze_ing.py src --no-browser
+
+and then for macOS:
+open -a "Google Chrome" http://localhost:8080
+
+and for Linux:
+google-chrome http://localhost:8080
+
+
+
 
 #### here's an example:
 ```

@@ -1,4 +1,5 @@
 import random
+import sys
 
 from .solver import MazeSolver
 
@@ -26,14 +27,14 @@ class Maze:
 
         def __init__(
                 self,
-                r: int,
-                c: int,
+                row: int,
+                col: int,
                 walls: int = 0b1111,
                 visited: bool = False
                 ) -> None:
             """Initialize a maze cell."""
-            self.r = r
-            self.c = c
+            self.row = row
+            self.col = col
             self.walls = walls
             self.visited = visited
 
@@ -84,8 +85,8 @@ class Maze:
 
         # grid[row][column]
         self.grid: list[list["Maze.Cell"]] = [
-            [self.Cell(r, c) for c in range(width)]
-            for r in range(height)
+            [self.Cell(row, col) for col in range(width)]
+            for row in range(height)
         ]
 
     def reset(self) -> None:
@@ -125,18 +126,18 @@ class Maze:
             current = stack[-1]
             neighbors: list["Maze.Cell"] = []
 
-            for d_r, d_c in directions:
-                n_r = current.r + d_r
-                n_c = current.c + d_c
+            for row_delta, col_delta in directions:
+                neighbor_row = current.row + row_delta
+                neighbor_col = current.col + col_delta
 
                 if (
-                    0 <= n_r < self.height
-                    and 0 <= n_c < self.width
-                    and (n_r, n_c) not in self.pattern_cells
-                    and not self.grid[n_r][n_c].visited
+                    0 <= neighbor_row < self.height
+                    and 0 <= neighbor_col < self.width
+                    and (neighbor_row, neighbor_col) not in self.pattern_cells
+                    and not self.grid[neighbor_row][neighbor_col].visited
                 ):
                     neighbors.append(
-                        self.grid[n_r][n_c]
+                        self.grid[neighbor_row][neighbor_col]
                     )
 
             if neighbors:
@@ -155,19 +156,19 @@ class Maze:
                 # south: 0b1011
                 # west:  0b0111
 
-                if next_cell.r > current.r:  # south
+                if next_cell.row > current.row:  # south
                     current.walls &= 0b1011
                     next_cell.walls &= 0b1110
 
-                elif next_cell.r < current.r:  # north
+                elif next_cell.row < current.row:  # north
                     current.walls &= 0b1110
                     next_cell.walls &= 0b1011
 
-                elif next_cell.c > current.c:  # east
+                elif next_cell.col > current.col:  # east
                     current.walls &= 0b1101
                     next_cell.walls &= 0b0111
 
-                elif next_cell.c < current.c:  # west
+                elif next_cell.col < current.col:  # west
                     current.walls &= 0b0111
                     next_cell.walls &= 0b1101
 
@@ -191,66 +192,71 @@ class Maze:
 
         dead_ends: list[tuple[int, int]] = []
 
-        for r in range(self.height):
-            for c in range(self.width):
+        for row in range(self.height):
+            for col in range(self.width):
 
                 # never modify a 42 cell
-                if (r, c) in self.pattern_cells:
+                if (row, col) in self.pattern_cells:
                     continue
 
-                cell = self.grid[r][c]
+                cell = self.grid[row][col]
 
                 if cell.walls.bit_count() == 3:
-                    dead_ends.append((r, c))
+                    dead_ends.append((row, col))
 
         self.rndm.shuffle(dead_ends)
 
         while dead_ends:
             changed = False
 
-            for r, c in dead_ends:
-                if self._open_degree(r, c) != 1:
+            for row, col in dead_ends:
+                if self._open_degree(row, col) != 1:
                     continue
 
-                cell = self.grid[r][c]
+                cell = self.grid[row][col]
                 possible_walls: list[tuple[int, int]] = []
 
                 # north
                 if (
-                    r > 0
-                    and (r - 1, c) not in self.pattern_cells
+                    row > 0
+                    and (row - 1, col) not in self.pattern_cells
                     and cell.walls & 0b0001
                 ):
-                    possible_walls.append((r - 1, c))
+                    possible_walls.append((row - 1, col))
 
                 # east
                 if (
-                    c < self.width - 1
-                    and (r, c + 1) not in self.pattern_cells
+                    col < self.width - 1
+                    and (row, col + 1) not in self.pattern_cells
                     and cell.walls & 0b0010
                 ):
-                    possible_walls.append((r, c + 1))
+                    possible_walls.append((row, col + 1))
 
                 # south
                 if (
-                    r < self.height - 1
-                    and (r + 1, c) not in self.pattern_cells
+                    row < self.height - 1
+                    and (row + 1, col) not in self.pattern_cells
                     and cell.walls & 0b0100
                 ):
-                    possible_walls.append((r + 1, c))
+                    possible_walls.append((row + 1, col))
 
                 # west
                 if (
-                    c > 0
-                    and (r, c - 1) not in self.pattern_cells
+                    col > 0
+                    and (row, col - 1) not in self.pattern_cells
                     and cell.walls & 0b1000
                 ):
-                    possible_walls.append((r, c - 1))
+                    possible_walls.append((row, col - 1))
 
                 self.rndm.shuffle(possible_walls)
 
-                for n_r, n_c in possible_walls:
-                    if self._try_open_wall(r, c, n_r, n_c):
+                for neighbor_row, neighbor_col in possible_walls:
+                    if self._try_open_wall(
+                        row,
+                        col,
+                        neighbor_row,
+                        neighbor_col,
+                    ):
                         changed = True
                         break
 
@@ -259,108 +265,227 @@ class Maze:
 
             dead_ends = self._dead_end_cells()
 
+        self._break_perimeter_shortcuts()
+
     def _open_wall(
             self,
-            r: int,
-            c: int,
-            n_r: int,
-            n_c: int,
+            row: int,
+            col: int,
+            neighbor_row: int,
+            neighbor_col: int,
             ) -> None:
         '''
         Open the wall between two neighboring cells
         '''
 
-        if n_c > c:  # east
-            self.grid[r][c].walls &= 0b1101
-            self.grid[n_r][n_c].walls &= 0b0111
+        if neighbor_col > col:  # east
+            self.grid[row][col].walls &= 0b1101
+            self.grid[neighbor_row][neighbor_col].walls &= 0b0111
 
-        elif n_c < c:  # west
-            self.grid[r][c].walls &= 0b0111
-            self.grid[n_r][n_c].walls &= 0b1101
+        elif neighbor_col < col:  # west
+            self.grid[row][col].walls &= 0b0111
+            self.grid[neighbor_row][neighbor_col].walls &= 0b1101
 
-        elif n_r > r:  # south
-            self.grid[r][c].walls &= 0b1011
-            self.grid[n_r][n_c].walls &= 0b1110
+        elif neighbor_row > row:  # south
+            self.grid[row][col].walls &= 0b1011
+            self.grid[neighbor_row][neighbor_col].walls &= 0b1110
 
-        elif n_r < r:  # north
-            self.grid[r][c].walls &= 0b1110
-            self.grid[n_r][n_c].walls &= 0b1011
+        elif neighbor_row < row:  # north
+            self.grid[row][col].walls &= 0b1110
+            self.grid[neighbor_row][neighbor_col].walls &= 0b1011
 
     def _close_wall(
             self,
-            r: int,
-            c: int,
-            n_r: int,
-            n_c: int,
+            row: int,
+            col: int,
+            neighbor_row: int,
+            neighbor_col: int,
             ) -> None:
         """Close the wall between two neighboring cells."""
 
-        if n_c > c:  # east
-            self.grid[r][c].walls |= 0b0010
-            self.grid[n_r][n_c].walls |= 0b1000
+        if neighbor_col > col:  # east
+            self.grid[row][col].walls |= 0b0010
+            self.grid[neighbor_row][neighbor_col].walls |= 0b1000
 
-        elif n_c < c:  # west
-            self.grid[r][c].walls |= 0b1000
-            self.grid[n_r][n_c].walls |= 0b0010
+        elif neighbor_col < col:  # west
+            self.grid[row][col].walls |= 0b1000
+            self.grid[neighbor_row][neighbor_col].walls |= 0b0010
 
-        elif n_r > r:  # south
-            self.grid[r][c].walls |= 0b0100
-            self.grid[n_r][n_c].walls |= 0b0001
+        elif neighbor_row > row:  # south
+            self.grid[row][col].walls |= 0b0100
+            self.grid[neighbor_row][neighbor_col].walls |= 0b0001
 
-        elif n_r < r:  # north
-            self.grid[r][c].walls |= 0b0001
-            self.grid[n_r][n_c].walls |= 0b0100
+        elif neighbor_row < row:  # north
+            self.grid[row][col].walls |= 0b0001
+            self.grid[neighbor_row][neighbor_col].walls |= 0b0100
+
+    def _break_perimeter_shortcuts(self) -> None:
+        """Break fully open two-side routes around outer corners."""
+        required_cells = self._required_non_perfect_cells()
+        top = [
+            (0, col, 0, col + 1)
+            for col in range(self.width - 1)
+        ]
+        bottom = [
+            (
+                self.height - 1,
+                col,
+                self.height - 1,
+                col + 1,
+            )
+            for col in range(self.width - 1)
+        ]
+        left = [
+            (row, 0, row + 1, 0)
+            for row in range(self.height - 1)
+        ]
+        right = [
+            (
+                row,
+                self.width - 1,
+                row + 1,
+                self.width - 1,
+            )
+            for row in range(self.height - 1)
+        ]
+
+        side_pairs = (
+            (top, right),
+            (right, bottom),
+            (bottom, left),
+            (left, top),
+        )
+
+        for first_side, second_side in side_pairs:
+            first_is_open = all(
+                not self._wall_is_closed(
+                    row,
+                    col,
+                    neighbor_row,
+                    neighbor_col,
+                )
+                for row, col, neighbor_row, neighbor_col in first_side
+            )
+            second_is_open = all(
+                not self._wall_is_closed(
+                    row,
+                    col,
+                    neighbor_row,
+                    neighbor_col,
+                )
+                for row, col, neighbor_row, neighbor_col in second_side
+            )
+
+            if not (first_is_open and second_is_open):
+                continue
+
+            candidates = [
+                (row, col, neighbor_row, neighbor_col)
+                for row, col, neighbor_row, neighbor_col in (
+                    first_side + second_side
+                )
+                if (
+                    (row, col) not in required_cells
+                    and (neighbor_row, neighbor_col) not in required_cells
+                    and self._open_degree(row, col) > 1
+                    and self._open_degree(
+                        neighbor_row,
+                        neighbor_col,
+                    ) > 1
+                )
+            ]
+            preferred_candidates = [
+                (row, col, neighbor_row, neighbor_col)
+                for row, col, neighbor_row, neighbor_col in candidates
+                if (
+                    self._open_degree(row, col) > 2
+                    and self._open_degree(
+                        neighbor_row,
+                        neighbor_col,
+                    ) > 2
+                )
+            ]
+            fallback_candidates = [
+                candidate
+                for candidate in candidates
+                if candidate not in preferred_candidates
+            ]
+            self.rndm.shuffle(preferred_candidates)
+            self.rndm.shuffle(fallback_candidates)
+            candidates = preferred_candidates + fallback_candidates
+
+            for row, col, neighbor_row, neighbor_col in candidates:
+                self._close_wall(
+                    row,
+                    col,
+                    neighbor_row,
+                    neighbor_col,
+                )
+
+                if (
+                    self._all_corridors_connected()
+                    and self._count_loops() >= 2
+                    and self._has_two_entry_exit_routes()
+                ):
+                    break
+
+                self._open_wall(
+                    row,
+                    col,
+                    neighbor_row,
+                    neighbor_col,
+                )
 
     def _try_open_wall(
             self,
-            r: int,
-            c: int,
-            n_r: int,
-            n_c: int,
+            row: int,
+            col: int,
+            neighbor_row: int,
+            neighbor_col: int,
             ) -> bool:
         """Try opening a wall without creating a 3x3 open area."""
 
         if (
-            (r, c) in self.pattern_cells
-            or (n_r, n_c) in self.pattern_cells
+            (row, col) in self.pattern_cells
+            or (neighbor_row, neighbor_col) in self.pattern_cells
         ):
             return False
 
-        if not self._wall_is_closed(r, c, n_r, n_c):
+        if not self._wall_is_closed(row, col, neighbor_row, neighbor_col):
             return False
 
-        self._open_wall(r, c, n_r, n_c)
+        self._open_wall(row, col, neighbor_row, neighbor_col)
 
         if self._has_3x3_open_area():
-            self._close_wall(r, c, n_r, n_c)
+            self._close_wall(row, col, neighbor_row, neighbor_col)
             return False
 
         return True
 
     def _wall_is_closed(
             self,
-            r: int,
-            c: int,
-            n_r: int,
-            n_c: int,
+            row: int,
+            col: int,
+            neighbor_row: int,
+            neighbor_col: int,
             ) -> bool:
         """Return whether the wall between two cells is closed."""
 
-        if n_c > c:
-            return bool(self.grid[r][c].walls & 0b0010)
+        if neighbor_col > col:
+            return bool(self.grid[row][col].walls & 0b0010)
 
-        if n_c < c:
-            return bool(self.grid[r][c].walls & 0b1000)
+        if neighbor_col < col:
+            return bool(self.grid[row][col].walls & 0b1000)
 
-        if n_r > r:
-            return bool(self.grid[r][c].walls & 0b0100)
+        if neighbor_row > row:
+            return bool(self.grid[row][col].walls & 0b0100)
 
-        return bool(self.grid[r][c].walls & 0b0001)
+        return bool(self.grid[row][col].walls & 0b0001)
 
-    def _open_degree(self, r: int, c: int) -> int:
+    def _open_degree(self, row: int, col: int) -> int:
         """Count how many passages leave one cell."""
         degree = 0
-        cell = self.grid[r][c]
+        cell = self.grid[row][col]
 
         directions = (
             (-1, 0, 0b0001),
@@ -369,17 +494,17 @@ class Maze:
             (0, -1, 0b1000),
         )
 
-        for d_r, d_c, wall_bit in directions:
-            n_r = r + d_r
-            n_c = c + d_c
+        for row_delta, col_delta, wall_bit in directions:
+            neighbor_row = row + row_delta
+            neighbor_col = col + col_delta
 
             if not (
-                0 <= n_r < self.height
-                and 0 <= n_c < self.width
+                0 <= neighbor_row < self.height
+                and 0 <= neighbor_col < self.width
             ):
                 continue
 
-            if (n_r, n_c) in self.pattern_cells:
+            if (neighbor_row, neighbor_col) in self.pattern_cells:
                 continue
 
             if not cell.walls & wall_bit:
@@ -389,13 +514,13 @@ class Maze:
 
     def _closed_neighbors(
             self,
-            r: int,
-            c: int,
+            row: int,
+            col: int,
             ) -> list[tuple[int, int]]:
         """Return neighbors separated from a cell by a closed wall."""
 
         neighbors: list[tuple[int, int]] = []
-        cell = self.grid[r][c]
+        cell = self.grid[row][col]
 
         directions = (
             (-1, 0, 0b0001),
@@ -404,21 +529,21 @@ class Maze:
             (0, -1, 0b1000),
         )
 
-        for d_r, d_c, wall_bit in directions:
-            n_r = r + d_r
-            n_c = c + d_c
+        for row_delta, col_delta, wall_bit in directions:
+            neighbor_row = row + row_delta
+            neighbor_col = col + col_delta
 
             if not (
-                0 <= n_r < self.height
-                and 0 <= n_c < self.width
+                0 <= neighbor_row < self.height
+                and 0 <= neighbor_col < self.width
             ):
                 continue
 
-            if (n_r, n_c) in self.pattern_cells:
+            if (neighbor_row, neighbor_col) in self.pattern_cells:
                 continue
 
             if cell.walls & wall_bit:
-                neighbors.append((n_r, n_c))
+                neighbors.append((neighbor_row, neighbor_col))
 
         return neighbors
 
@@ -429,49 +554,35 @@ class Maze:
 
         possible_walls: list[tuple[int, int, int, int]] = []
 
-        for r in range(self.height):
-            for c in range(self.width):
+        for row in range(self.height):
+            for col in range(self.width):
 
-                if (r, c) in self.pattern_cells:
+                if (row, col) in self.pattern_cells:
                     continue
 
                 if (
-                    c + 1 < self.width
-                    and (r, c + 1) not in self.pattern_cells
-                    and self.grid[r][c].walls & 0b0010
+                    col + 1 < self.width
+                    and (row, col + 1) not in self.pattern_cells
+                    and self.grid[row][col].walls & 0b0010
                 ):
                     possible_walls.append(
-                        (r, c, r, c + 1)
+                        (row, col, row, col + 1)
                     )
 
                 if (
-                    r + 1 < self.height
-                    and (r + 1, c) not in self.pattern_cells
-                    and self.grid[r][c].walls & 0b0100
+                    row + 1 < self.height
+                    and (row + 1, col) not in self.pattern_cells
+                    and self.grid[row][col].walls & 0b0100
                 ):
                     possible_walls.append(
-                        (r, c, r + 1, c)
+                        (row, col, row + 1, col)
                     )
 
         return possible_walls
 
     def _center_cells(self) -> set[tuple[int, int]]:
-        """Return the central cell or cells of the maze."""
-        center_rows = {
-            (self.height - 1) // 2,
-            self.height // 2,
-        }
-
-        center_columns = {
-            (self.width - 1) // 2,
-            self.width // 2,
-        }
-
-        return {
-            (r, c)
-            for r in center_rows
-            for c in center_columns
-        }
+        """Return the single centre corridor required in game mode."""
+        return {(self.height // 2, self.width // 2)}
 
     def _required_non_perfect_cells(
             self,
@@ -493,15 +604,20 @@ class Maze:
         """Keep the four corners and centre as open corridors."""
         required = self._required_non_perfect_cells()
 
-        for r, c in required:
-            while self._open_degree(r, c) < 2:
-                possible_walls = self._closed_neighbors(r, c)
+        for row, col in required:
+            while self._open_degree(row, col) < 2:
+                possible_walls = self._closed_neighbors(row, col)
                 self.rndm.shuffle(possible_walls)
 
                 opened = False
 
-                for n_r, n_c in possible_walls:
-                    if self._try_open_wall(r, c, n_r, n_c):
+                for neighbor_row, neighbor_col in possible_walls:
+                    if self._try_open_wall(
+                        row,
+                        col,
+                        neighbor_row,
+                        neighbor_col,
+                    ):
                         opened = True
                         break
 
@@ -516,11 +632,11 @@ class Maze:
         possible_walls = self._candidate_closed_walls()
         self.rndm.shuffle(possible_walls)
 
-        for r, c, n_r, n_c in possible_walls:
+        for row, col, neighbor_row, neighbor_col in possible_walls:
             if self._count_loops() >= 2:
                 return
 
-            self._try_open_wall(r, c, n_r, n_c)
+            self._try_open_wall(row, col, neighbor_row, neighbor_col)
 
         if self._count_loops() < 2:
             raise MazeError(
@@ -536,23 +652,23 @@ class Maze:
 
         passages = 0
 
-        for r in range(self.height):
-            for c in range(self.width):
+        for row in range(self.height):
+            for col in range(self.width):
 
-                if (r, c) in self.pattern_cells:
+                if (row, col) in self.pattern_cells:
                     continue
 
                 if (
-                    c + 1 < self.width
-                    and (r, c + 1) not in self.pattern_cells
-                    and not self.grid[r][c].walls & 0b0010
+                    col + 1 < self.width
+                    and (row, col + 1) not in self.pattern_cells
+                    and not self.grid[row][col].walls & 0b0010
                 ):
                     passages += 1
 
                 if (
-                    r + 1 < self.height
-                    and (r + 1, c) not in self.pattern_cells
-                    and not self.grid[r][c].walls & 0b0100
+                    row + 1 < self.height
+                    and (row + 1, col) not in self.pattern_cells
+                    and not self.grid[row][col].walls & 0b0100
                 ):
                     passages += 1
 
@@ -560,15 +676,15 @@ class Maze:
 
     def _passage_neighbors(
             self,
-            r: int,
-            c: int,
+            row: int,
+            col: int,
             blocked_edge: Edge | None = None,
             ) -> list[Coordinate]:
         """Return cells reachable through open passages."""
 
         neighbors: list[Coordinate] = []
-        cell = self.grid[r][c]
-        current = (r, c)
+        cell = self.grid[row][col]
+        current = (row, col)
 
         directions = (
             (-1, 0, 0b0001),
@@ -577,14 +693,14 @@ class Maze:
             (0, -1, 0b1000),
         )
 
-        for d_r, d_c, wall_bit in directions:
-            n_r = r + d_r
-            n_c = c + d_c
-            neighbor = (n_r, n_c)
+        for row_delta, col_delta, wall_bit in directions:
+            neighbor_row = row + row_delta
+            neighbor_col = col + col_delta
+            neighbor = (neighbor_row, neighbor_col)
 
             if not (
-                0 <= n_r < self.height
-                and 0 <= n_c < self.width
+                0 <= neighbor_row < self.height
+                and 0 <= neighbor_col < self.width
             ):
                 continue
 
@@ -707,8 +823,8 @@ class Maze:
         possible_walls = self._candidate_closed_walls()
         self.rndm.shuffle(possible_walls)
 
-        for r, c, n_r, n_c in possible_walls:
-            self._try_open_wall(r, c, n_r, n_c)
+        for row, col, neighbor_row, neighbor_col in possible_walls:
+            self._try_open_wall(row, col, neighbor_row, neighbor_col)
 
             if self._has_two_entry_exit_routes():
                 return
@@ -720,12 +836,12 @@ class Maze:
     def _dead_end_cells(self) -> list[tuple[int, int]]:
         """Return all non-pattern dead-end cells."""
         return [
-            (r, c)
-            for r in range(self.height)
-            for c in range(self.width)
+            (row, col)
+            for row in range(self.height)
+            for col in range(self.width)
             if (
-                (r, c) not in self.pattern_cells
-                and self._open_degree(r, c) == 1
+                (row, col) not in self.pattern_cells
+                and self._open_degree(row, col) == 1
             )
         ]
 
@@ -740,10 +856,10 @@ class Maze:
 
                 is_open = True
 
-                for r in range(top, top + 3):
-                    for c in range(left, left + 2):
+                for row in range(top, top + 3):
+                    for col in range(left, left + 2):
 
-                        if self.grid[r][c].walls & 0b0010:
+                        if self.grid[row][col].walls & 0b0010:
                             is_open = False
                             break
 
@@ -753,10 +869,10 @@ class Maze:
                 if not is_open:
                     continue
 
-                for r in range(top, top + 2):
-                    for c in range(left, left + 3):
+                for row in range(top, top + 2):
+                    for col in range(left, left + 3):
 
-                        if self.grid[r][c].walls & 0b0100:
+                        if self.grid[row][col].walls & 0b0100:
                             is_open = False
                             break
 
@@ -768,18 +884,58 @@ class Maze:
 
         return False
 
+    def _required_cells_have_room(
+        self,
+        pattern_cells: set[tuple[int, int]],
+    ) -> bool:
+        """Check that required cells have room to connect."""
+
+        required = self._required_non_perfect_cells()
+
+        for row, col in required:
+            free_neighbors = 0
+
+            directions = (
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+            )
+
+            for row_delta, col_delta in directions:
+                neighbor_row = row + row_delta
+                neighbor_col = col + col_delta
+
+                if not (
+                    0 <= neighbor_row < self.height
+                    and 0 <= neighbor_col < self.width
+                ):
+                    continue
+
+                if (neighbor_row, neighbor_col) in pattern_cells:
+                    continue
+
+                free_neighbors += 1
+
+            if free_neighbors < 2:
+                return False
+
+        return True
+
     def _place_42_pattern(self) -> None:
         """Place the closed-cell 42 pattern inside the maze."""
 
         pattern_height = len(PATTERN_42)
         pattern_width = len(PATTERN_42[0])
 
-        # leave one corridor around the pattern
         if (
-            self.height < pattern_height + 2
-            or self.width < pattern_width + 2
+            self.height < pattern_height
+            or self.width < pattern_width
         ):
-            print("Error: maze is too small for the 42 pattern")
+            print(
+                "Error: maze is too small for the 42 pattern",
+                file=sys.stderr,
+            )
             return
 
         entry_c, entry_r = self.entry
@@ -790,92 +946,53 @@ class Maze:
             (exit_r, exit_c),
         }
 
-        # PERFECT=False requires the centre to stay open
         if not self.perfect:
             protected.update(self._center_cells())
 
-        for top in range(
-            1,
-            self.height - pattern_height,
-        ):
-            for left in range(
-                1,
-                self.width - pattern_width,
-            ):
+        max_attempts = max(30, (self.width + self.height) // 2)
+        for _ in range(max_attempts):
+            top = self.rndm.randrange(
+                0,
+                self.height - pattern_height + 1,
+            )
+            left = self.rndm.randrange(
+                0,
+                self.width - pattern_width + 1,
+            )
 
-                pattern_cells: set[tuple[int, int]] = set()
+            pattern_cells: set[tuple[int, int]] = set()
 
-                for pattern_r, line in enumerate(PATTERN_42):
-                    for pattern_c, value in enumerate(line):
-
-                        if value == "1":
-                            pattern_cells.add(
-                                (
-                                    top + pattern_r,
-                                    left + pattern_c,
-                                )
+            for pattern_row, line in enumerate(PATTERN_42):
+                for pattern_col, value in enumerate(line):
+                    if value == "1":
+                        pattern_cells.add(
+                            (
+                                top + pattern_row,
+                                left + pattern_col,
                             )
+                        )
 
-                if pattern_cells & protected:
+            if pattern_cells & protected:
+                continue
+
+            if not self.perfect:
+                if not self._required_cells_have_room(pattern_cells):
                     continue
 
-                if not self.perfect:
-                    if not self._required_cells_have_room(
-                        pattern_cells
-                    ):
-                        continue
+            if not self._pattern_keeps_maze_connected(pattern_cells):
+                continue
 
-                if not self._pattern_keeps_maze_connected(
-                    pattern_cells
-                ):
-                    continue
+            self.pattern_cells = pattern_cells
 
-                self.pattern_cells = pattern_cells
+            for row, col in self.pattern_cells:
+                self.grid[row][col].walls = 0b1111
 
-                for r, c in self.pattern_cells:
-                    self.grid[r][c].walls = 0b1111
+            return
 
-                return
-
-        print("Error: no safe place for the 42 pattern")
-
-    def _required_cells_have_room(
-            self,
-            pattern_cells: set[tuple[int, int]],
-            ) -> bool:
-        """Check that required corridor cells still have two neighbors."""
-
-        required = self._required_non_perfect_cells()
-
-        directions = (
-            (-1, 0),
-            (1, 0),
-            (0, -1),
-            (0, 1),
+        print(
+            "Error: no safe place for the 42 pattern",
+            file=sys.stderr,
         )
-
-        for r, c in required:
-
-            if (r, c) in pattern_cells:
-                return False
-
-            available_neighbors = 0
-
-            for d_r, d_c in directions:
-                n_r = r + d_r
-                n_c = c + d_c
-
-                if (
-                    0 <= n_r < self.height
-                    and 0 <= n_c < self.width
-                    and (n_r, n_c) not in pattern_cells
-                ):
-                    available_neighbors += 1
-
-            if available_neighbors < 2:
-                return False
-
-        return True
 
     def _pattern_keeps_maze_connected(
             self,
@@ -900,26 +1017,26 @@ class Maze:
         )
 
         while stack:
-            r, c = stack.pop()
+            row, col = stack.pop()
 
-            for d_r, d_c in directions:
-                n_r = r + d_r
-                n_c = c + d_c
+            for row_delta, col_delta in directions:
+                neighbor_row = row + row_delta
+                neighbor_col = col + col_delta
 
                 if not (
-                    0 <= n_r < self.height
-                    and 0 <= n_c < self.width
+                    0 <= neighbor_row < self.height
+                    and 0 <= neighbor_col < self.width
                 ):
                     continue
 
-                if (n_r, n_c) in pattern_cells:
+                if (neighbor_row, neighbor_col) in pattern_cells:
                     continue
 
-                if (n_r, n_c) in visited:
+                if (neighbor_row, neighbor_col) in visited:
                     continue
 
-                visited.add((n_r, n_c))
-                stack.append((n_r, n_c))
+                visited.add((neighbor_row, neighbor_col))
+                stack.append((neighbor_row, neighbor_col))
 
         open_cells = (
             self.width * self.height
@@ -938,9 +1055,9 @@ class Maze:
         stack: list[Coordinate] = [start]
 
         while stack:
-            r, c = stack.pop()
+            row, col = stack.pop()
 
-            for neighbor in self._passage_neighbors(r, c):
+            for neighbor in self._passage_neighbors(row, col):
                 if neighbor in visited:
                     continue
 
@@ -957,26 +1074,26 @@ class Maze:
     def _walls_are_consistent(self) -> bool:
         """Check that neighboring cells agree about their shared walls."""
 
-        for r in range(self.height):
-            for c in range(self.width):
+        for row in range(self.height):
+            for col in range(self.width):
 
-                if c + 1 < self.width:
+                if col + 1 < self.width:
                     east = bool(
-                        self.grid[r][c].walls & 0b0010
+                        self.grid[row][col].walls & 0b0010
                     )
                     west = bool(
-                        self.grid[r][c + 1].walls & 0b1000
+                        self.grid[row][col + 1].walls & 0b1000
                     )
 
                     if east != west:
                         return False
 
-                if r + 1 < self.height:
+                if row + 1 < self.height:
                     south = bool(
-                        self.grid[r][c].walls & 0b0100
+                        self.grid[row][col].walls & 0b0100
                     )
                     north = bool(
-                        self.grid[r + 1][c].walls & 0b0001
+                        self.grid[row + 1][col].walls & 0b0001
                     )
 
                     if south != north:
@@ -987,24 +1104,24 @@ class Maze:
     def _borders_are_closed(self) -> bool:
         """Check that all external maze borders are closed."""
 
-        for c in range(self.width):
+        for col in range(self.width):
 
-            if not self.grid[0][c].walls & 0b0001:
+            if not self.grid[0][col].walls & 0b0001:
                 return False
 
             if not (
-                self.grid[self.height - 1][c].walls
+                self.grid[self.height - 1][col].walls
                 & 0b0100
             ):
                 return False
 
-        for r in range(self.height):
+        for row in range(self.height):
 
-            if not self.grid[r][0].walls & 0b1000:
+            if not self.grid[row][0].walls & 0b1000:
                 return False
 
             if not (
-                self.grid[r][self.width - 1].walls
+                self.grid[row][self.width - 1].walls
                 & 0b0010
             ):
                 return False
@@ -1029,8 +1146,8 @@ class Maze:
                 "Maze corridors are not fully connected"
             )
 
-        for r, c in self.pattern_cells:
-            if self.grid[r][c].walls != 0b1111:
+        for row, col in self.pattern_cells:
+            if self.grid[row][col].walls != 0b1111:
                 raise MazeError(
                     "42 pattern cells must stay fully closed"
                 )
@@ -1063,8 +1180,8 @@ class Maze:
 
             required = self._required_non_perfect_cells()
 
-            for r, c in required:
-                if self._open_degree(r, c) < 2:
+            for row, col in required:
+                if self._open_degree(row, col) < 2:
                     raise MazeError(
                         "Corners and centre must be open corridors"
                     )
@@ -1073,10 +1190,10 @@ class Maze:
         """Return the maze as integer wall values."""
         return [
             [
-                self.grid[r][c].walls
-                for c in range(self.width)
+                self.grid[row][col].walls
+                for col in range(self.width)
             ]
-            for r in range(self.height)
+            for row in range(self.height)
         ]
 
     def solve(self) -> str:

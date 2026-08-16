@@ -1,4 +1,4 @@
-"""Terminal visualizer for the A-Maze-ing project."""
+"""Interactive terminal visualization for generated and solved mazes."""
 
 import curses
 
@@ -12,98 +12,153 @@ EAST = 0b0010
 SOUTH = 0b0100
 WEST = 0b1000
 
+WALL = "█"
+HORIZONTAL_WALL = WALL * 3
+PATTERN_FILL = "▓" * 3
+
 COLOR_NAMES: tuple[str, ...] = (
     "white",
     "red",
     "green",
     "yellow",
+    "blue",
     "cyan",
+    "magenta",
 )
+
+START_COLOR_INDEX = 6
+EXIT_COLOR_INDEX = 1
 
 
 class TerminalVisualizer:
-    """Display and interact with a maze in the terminal."""
+    """Display a maze and its shortest solution in a curses terminal."""
 
-    def __init__(self, maze: Maze) -> None:
-        """Initialize the terminal visualizer."""
+    def __init__(
+        self,
+        maze: Maze,
+        solved_path: str | None = None,
+    ) -> None:
+        """Initialize the visualizer with the solution visible."""
         self.maze = maze
-        self.show_solution = False
+        self.configured_seed = maze.myseed
+        self.solved_path = (
+            maze.solve() if solved_path is None else solved_path
+        )
+        self.show_solution = True
+        self.solution_step_limit: int | None = None
         self.color_index = 0
-        self.player: Coordinate = maze.entry
-        self.message = ""
+        self.solution_color_index = 2
+        self.scroll_x = 0
+        self.scroll_y = 0
+        self.message = "Shortest path shown."
 
     def run(self) -> None:
-        """Run the terminal visualizer."""
+        """Open the interactive terminal visualization."""
         curses.wrapper(self._curses_loop)
 
     def _curses_loop(self, screen: curses.window) -> None:
-        """Handle drawing and keyboard controls."""
-
+        """Draw the maze and process visualization controls."""
         try:
             curses.curs_set(0)
         except curses.error:
             pass
 
         screen.keypad(True)
-
         self._setup_colors()
 
         while True:
             self._draw_curses(screen)
-
             key = screen.getch()
 
             if key in (ord("q"), ord("Q")):
-                break
+                return
 
-            if key in (
-                ord("w"),
-                ord("W"),
-                curses.KEY_UP,
-            ):
-                self._move_player("w")
-
-            elif key in (
-                ord("a"),
-                ord("A"),
-                curses.KEY_LEFT,
-            ):
-                self._move_player("a")
-
-            elif key in (
-                ord("s"),
-                ord("S"),
-                curses.KEY_DOWN,
-            ):
-                self._move_player("s")
-
-            elif key in (
-                ord("d"),
-                ord("D"),
-                curses.KEY_RIGHT,
-            ):
-                self._move_player("d")
-
+            if key == curses.KEY_UP:
+                self.scroll_y = max(0, self.scroll_y - 2)
+            elif key == curses.KEY_DOWN:
+                self.scroll_y += 2
+            elif key == curses.KEY_LEFT:
+                self.scroll_x = max(0, self.scroll_x - 4)
+            elif key == curses.KEY_RIGHT:
+                self.scroll_x += 4
             elif key in (ord("p"), ord("P")):
+                self.solution_step_limit = None
                 self.show_solution = not self.show_solution
-                self.message = ""
-
+                state = "shown" if self.show_solution else "hidden"
+                self.message = f"Shortest path {state}."
+            elif key in (ord("a"), ord("A")):
+                if self._animate_solution(screen):
+                    return
             elif key in (ord("c"), ord("C")):
                 self.color_index = (
                     self.color_index + 1
                 ) % len(COLOR_NAMES)
-                self.message = ""
-
+                self.message = (
+                    f"Wall color: {COLOR_NAMES[self.color_index]}."
+                )
+            elif key in (ord("v"), ord("V")):
+                self.solution_color_index = (
+                    self.solution_color_index + 1
+                ) % len(COLOR_NAMES)
+                self.message = (
+                    "Solution color: "
+                    f"{COLOR_NAMES[self.solution_color_index]}."
+                )
             elif key in (ord("r"), ord("R")):
-                self.maze.myseed = None
-                self.maze.generate()
+                self._regenerate(use_configured_seed=False)
+            elif key in (ord("s"), ord("S")):
+                if self.configured_seed is None:
+                    self.message = "No seed was configured."
+                else:
+                    self._regenerate(use_configured_seed=True)
 
-                self.player = self.maze.entry
-                self.message = "New maze generated."
+    def _regenerate(self, use_configured_seed: bool) -> None:
+        """Generate a maze and refresh the path shown by the solver."""
+        self.maze.myseed = (
+            self.configured_seed if use_configured_seed else None
+        )
+        self.maze.generate()
+        self.solved_path = self.maze.solve()
+        self.scroll_x = 0
+        self.scroll_y = 0
+        self.show_solution = True
+        self.solution_step_limit = None
+
+        if use_configured_seed:
+            self.message = (
+                f"Seed {self.configured_seed} replayed; "
+                "shortest path shown."
+            )
+        else:
+            self.message = "New random maze; shortest path shown."
+
+    def _animate_solution(self, screen: curses.window) -> bool:
+        """Animate the solver path and report whether quit was pressed."""
+        self.show_solution = True
+        self.message = "Animating solution; press any key to skip."
+        quit_requested = False
+        screen.nodelay(True)
+
+        try:
+            for step in range(len(self.solved_path) + 1):
+                self.solution_step_limit = step
+                self._draw_curses(screen)
+
+                key = screen.getch()
+                if key != -1:
+                    quit_requested = key in (ord("q"), ord("Q"))
+                    break
+
+                curses.napms(45)
+        finally:
+            screen.nodelay(False)
+            self.solution_step_limit = None
+
+        self.message = "Solution animation complete."
+        return quit_requested
 
     def _setup_colors(self) -> None:
-        """Initialize curses wall colors."""
-
+        """Initialize every selectable wall color."""
         if not curses.has_colors():
             return
 
@@ -122,154 +177,124 @@ class TerminalVisualizer:
             curses.COLOR_YELLOW,
             curses.COLOR_BLUE,
             curses.COLOR_CYAN,
+            curses.COLOR_MAGENTA,
         )
 
-        for pair_number, color in enumerate(
-            colors,
-            start=1,
-        ):
+        for pair_number, color in enumerate(colors, start=1):
             try:
-                curses.init_pair(
-                    pair_number,
-                    color,
-                    background,
-                )
+                curses.init_pair(pair_number, color, background)
             except curses.error:
                 pass
 
     def _wall_color(self) -> int:
-        """Return the currently selected wall color."""
-
+        """Return the currently selected curses wall style."""
         if not curses.has_colors():
             return curses.A_NORMAL
 
-        return curses.color_pair(
-            self.color_index + 1
+        return curses.color_pair(self.color_index + 1)
+
+    def _solution_color(self) -> int:
+        """Return the currently selected solution-path style."""
+        if not curses.has_colors():
+            return curses.A_BOLD
+
+        return curses.color_pair(self.solution_color_index + 1)
+
+    def _start_color(self) -> int:
+        """Return the magenta entry-cell background style."""
+        if not curses.has_colors():
+            return curses.A_REVERSE | curses.A_BOLD
+
+        return (
+            curses.color_pair(START_COLOR_INDEX + 1)
+            | curses.A_REVERSE
+            | curses.A_BOLD
         )
 
-    def _solution_cells(self) -> set[Coordinate]:
-        """Return all cells in the shortest solution path."""
+    def _exit_color(self) -> int:
+        """Return the red exit-cell background style."""
+        if not curses.has_colors():
+            return curses.A_REVERSE | curses.A_BOLD
 
+        return (
+            curses.color_pair(EXIT_COLOR_INDEX + 1)
+            | curses.A_REVERSE
+            | curses.A_BOLD
+        )
+
+    def _solution_coordinates(self) -> list[Coordinate]:
+        """Return the ordered cells crossed by the visible solution."""
         if not self.show_solution:
-            return set()
-
-        solution = self.maze.solve()
+            return []
 
         x, y = self.maze.entry
-        cells: set[Coordinate] = {(x, y)}
-
-        moves: dict[str, tuple[int, int]] = {
+        coordinates: list[Coordinate] = [(x, y)]
+        moves: dict[str, Coordinate] = {
             "N": (0, -1),
             "E": (1, 0),
             "S": (0, 1),
             "W": (-1, 0),
         }
 
-        for direction in solution:
-            dx, dy = moves[direction]
+        for step, direction in enumerate(self.solved_path, start=1):
+            if (
+                self.solution_step_limit is not None
+                and step > self.solution_step_limit
+            ):
+                break
 
+            dx, dy = moves[direction]
             x += dx
             y += dy
+            coordinates.append((x, y))
 
-            cells.add((x, y))
+        return coordinates
 
-        return cells
+    def _solution_cells(self) -> set[Coordinate]:
+        """Return the cells crossed by the visible solution path."""
+        return set(self._solution_coordinates())
 
     def _cell_symbol(
-            self,
-            x: int,
-            y: int,
-            solution_cells: set[Coordinate],
-            ) -> str:
-        """Return the symbol shown inside a cell."""
-
-        if (x, y) == self.player:
-            return "@"
-
+        self,
+        x: int,
+        y: int,
+        solution_cells: set[Coordinate],
+    ) -> str:
+        """Return the symbol displayed inside one maze cell."""
         if (x, y) == self.maze.entry:
             return "E"
-
         if (x, y) == self.maze.exitt:
             return "X"
-
         if (y, x) in self.maze.pattern_cells:
             return "#"
-
         if (x, y) in solution_cells:
             return "*"
-
         return " "
 
-    def _move_player(self, direction: str) -> None:
-        """Move the player if no wall blocks the movement."""
+    @staticmethod
+    def _safe_addstr(
+        window: curses.window,
+        y: int,
+        x: int,
+        text: str,
+        style: int = curses.A_NORMAL,
+    ) -> None:
+        """Write to a curses window while tolerating edge clipping."""
+        try:
+            window.addstr(y, x, text, style)
+        except curses.error:
+            pass
 
-        x, y = self.player
-
+    def _draw_maze(self, pad: curses.window) -> None:
+        """Draw all walls and cell symbols onto a curses pad."""
         grid = self.maze.get_grid()
-        walls = grid[y][x]
-
-        moves: dict[str, tuple[int, int, int]] = {
-            "w": (0, -1, NORTH),
-            "d": (1, 0, EAST),
-            "s": (0, 1, SOUTH),
-            "a": (-1, 0, WEST),
-        }
-
-        dx, dy, wall_bit = moves[direction]
-
-        if walls & wall_bit:
-            self.message = "You hit a wall."
-            return
-
-        new_x = x + dx
-        new_y = y + dy
-
-        if not (
-            0 <= new_x < self.maze.width
-            and 0 <= new_y < self.maze.height
-        ):
-            self.message = "You cannot leave the maze."
-            return
-
-        if (new_y, new_x) in self.maze.pattern_cells:
-            self.message = "The 42 pattern blocks this cell."
-            return
-
-        self.player = (new_x, new_y)
-        self.message = ""
-
-        if self.player == self.maze.exitt:
-            self.message = "You reached the exit!"
-
-    def _draw_curses(
-            self,
-            screen: curses.window,
-            ) -> None:
-        """Draw the maze and scroll automatically with the player."""
-
-        screen.erase()
-        screen.refresh()
-
-        screen_height, screen_width = screen.getmaxyx()
-
-        if screen_height < 4 or screen_width < 5:
-            return
-
-        # Two extra rows/columns prevent curses from writing
-        # exactly into the bottom-right corner.
-        pad_height = self.maze.height * 2 + 2
-        pad_width = self.maze.width * 4 + 2
-
-        pad = curses.newpad(
-            pad_height,
-            pad_width,
-        )
-
-        grid = self.maze.get_grid()
-        solution_cells = self._solution_cells()
+        solution_coordinates = self._solution_coordinates()
+        solution_cells = set(solution_coordinates)
         wall_color = self._wall_color()
+        solution_color = self._solution_color()
+        start_color = self._start_color()
+        exit_color = self._exit_color()
 
-        # Draw every maze row.
         for y in range(self.maze.height):
             top_row = y * 2
             middle_row = top_row + 1
@@ -278,173 +303,171 @@ class TerminalVisualizer:
                 column = x * 4
                 walls = grid[y][x]
 
-                pad.addstr(
-                    top_row,
-                    column,
-                    "+",
-                    wall_color,
-                )
-
+                self._safe_addstr(pad, top_row, column, WALL, wall_color)
                 if walls & NORTH:
-                    pad.addstr(
+                    self._safe_addstr(
+                        pad,
                         top_row,
                         column + 1,
-                        "---",
+                        HORIZONTAL_WALL,
                         wall_color,
                     )
-
                 if walls & WEST:
-                    pad.addstr(
-                        middle_row,
-                        column,
-                        "|",
-                        wall_color,
+                    self._safe_addstr(
+                        pad, middle_row, column, WALL, wall_color
                     )
 
-                symbol = self._cell_symbol(
-                    x,
-                    y,
-                    solution_cells,
+                symbol = self._cell_symbol(x, y, solution_cells)
+                is_solution_cell = (
+                    (x, y) in solution_cells
+                    and (x, y) not in (
+                        self.maze.entry,
+                        self.maze.exitt,
+                    )
                 )
+                if (y, x) in self.maze.pattern_cells:
+                    cell_contents = PATTERN_FILL
+                elif is_solution_cell:
+                    cell_contents = HORIZONTAL_WALL
+                else:
+                    cell_contents = f" {symbol} "
 
-                pad.addstr(
+                if (x, y) == self.maze.entry:
+                    cell_style = start_color
+                elif (x, y) == self.maze.exitt:
+                    cell_style = exit_color
+                elif is_solution_cell:
+                    cell_style = solution_color
+                else:
+                    cell_style = curses.A_NORMAL
+                self._safe_addstr(
+                    pad,
                     middle_row,
                     column + 1,
-                    f" {symbol} ",
+                    cell_contents,
+                    cell_style,
                 )
 
-            # Right wall of the final cell.
             final_column = self.maze.width * 4
-
-            pad.addstr(
-                top_row,
-                final_column,
-                "+",
-                wall_color,
+            self._safe_addstr(
+                pad, top_row, final_column, WALL, wall_color
             )
-
-            last_cell = grid[y][self.maze.width - 1]
-
-            if last_cell & EAST:
-                pad.addstr(
-                    middle_row,
-                    final_column,
-                    "|",
-                    wall_color,
+            if grid[y][self.maze.width - 1] & EAST:
+                self._safe_addstr(
+                    pad, middle_row, final_column, WALL, wall_color
                 )
 
-        # Draw bottom border.
         bottom_row = self.maze.height * 2
-
         for x in range(self.maze.width):
             column = x * 4
-
-            pad.addstr(
-                bottom_row,
-                column,
-                "+",
-                wall_color,
+            self._safe_addstr(
+                pad, bottom_row, column, WALL, wall_color
             )
-
             if grid[self.maze.height - 1][x] & SOUTH:
-                pad.addstr(
+                self._safe_addstr(
+                    pad,
                     bottom_row,
                     column + 1,
-                    "---",
+                    HORIZONTAL_WALL,
                     wall_color,
                 )
 
-        pad.addstr(
+        self._safe_addstr(
+            pad,
             bottom_row,
             self.maze.width * 4,
-            "+",
+            WALL,
             wall_color,
         )
 
-        # Leave two terminal lines for controls.
-        view_height = screen_height - 2
+        for current, following in zip(
+            solution_coordinates,
+            solution_coordinates[1:],
+        ):
+            current_x, current_y = current
+            following_x, following_y = following
+
+            if current_y == following_y:
+                connector_column = max(current_x, following_x) * 4
+                connector_row = current_y * 2 + 1
+                self._safe_addstr(
+                    pad,
+                    connector_row,
+                    connector_column,
+                    WALL,
+                    solution_color,
+                )
+            else:
+                connector_row = max(current_y, following_y) * 2
+                connector_column = current_x * 4 + 1
+                self._safe_addstr(
+                    pad,
+                    connector_row,
+                    connector_column,
+                    HORIZONTAL_WALL,
+                    solution_color,
+                )
+
+    def _draw_curses(self, screen: curses.window) -> None:
+        """Draw a scrollable maze plus its legend and controls."""
+        screen.erase()
+        screen_height, screen_width = screen.getmaxyx()
+
+        if screen_height < 6 or screen_width < 20:
+            self._safe_addstr(screen, 0, 0, "Terminal is too small.")
+            screen.refresh()
+            return
+
+        pad_height = self.maze.height * 2 + 2
+        pad_width = self.maze.width * 4 + 2
+        pad = curses.newpad(pad_height, pad_width)
+        self._draw_maze(pad)
+
+        view_height = screen_height - 3
         view_width = screen_width
+        max_scroll_y = max(0, pad_height - view_height)
+        max_scroll_x = max(0, pad_width - view_width)
+        self.scroll_y = min(self.scroll_y, max_scroll_y)
+        self.scroll_x = min(self.scroll_x, max_scroll_x)
 
-        player_x, player_y = self.player
+        rows_to_show = min(view_height, pad_height - self.scroll_y)
+        columns_to_show = min(view_width, pad_width - self.scroll_x)
 
-        # Player position inside the big pad.
-        player_pad_y = player_y * 2 + 1
-        player_pad_x = player_x * 4 + 2
-
-        # Try to keep the player in the middle of the screen.
-        scroll_y = max(
-            0,
-            player_pad_y - view_height // 2,
+        legend = (
+            "E entry (magenta) | X exit (red) | "
+            "█ shortest path | ▓ closed 42 cell"
         )
-
-        scroll_x = max(
-            0,
-            player_pad_x - view_width // 2,
-        )
-
-        # Do not scroll past the maze.
-        max_scroll_y = max(
-            0,
-            pad_height - view_height,
-        )
-
-        max_scroll_x = max(
-            0,
-            pad_width - view_width,
-        )
-
-        scroll_y = min(scroll_y, max_scroll_y)
-        scroll_x = min(scroll_x, max_scroll_x)
-
-        # How much of the pad can actually be displayed.
-        rows_to_show = min(
-            view_height,
-            pad_height - scroll_y,
-        )
-
-        columns_to_show = min(
-            view_width,
-            pad_width - scroll_x,
-        )
-
-        if rows_to_show > 0 and columns_to_show > 0:
-            pad.refresh(
-                scroll_y,
-                scroll_x,
-                0,
-                0,
-                rows_to_show - 1,
-                columns_to_show - 1,
-            )
-
-        # Bottom controls.
         controls = (
-            "WASD/arrows move | "
-            "P path | R regenerate | "
-            "C color | Q quit"
+            "Arrows scroll | P path | A animate | R new | S seed | "
+            "C walls | V path | Q quit"
         )
-
-        status = f"Color: {COLOR_NAMES[self.color_index]}"
-
-        if self.message:
-            status += f" | {self.message}"
+        status = (
+            f"Walls: {COLOR_NAMES[self.color_index]} | "
+            f"Path: {COLOR_NAMES[self.solution_color_index]} | "
+            f"{self.message}"
+        )
 
         try:
-            screen.addnstr(
-                screen_height - 2,
-                0,
-                controls,
-                screen_width - 1,
-            )
+            if rows_to_show > 0 and columns_to_show > 0:
+                pad.overwrite(
+                    screen,
+                    self.scroll_y,
+                    self.scroll_x,
+                    0,
+                    0,
+                    rows_to_show - 1,
+                    columns_to_show - 1,
+                )
 
             screen.addnstr(
-                screen_height - 1,
-                0,
-                status,
-                screen_width - 1,
+                screen_height - 3, 0, legend, screen_width - 1
             )
-
+            screen.addnstr(
+                screen_height - 2, 0, controls, screen_width - 1
+            )
+            screen.addnstr(
+                screen_height - 1, 0, status, screen_width - 1
+            )
             screen.refresh()
-
         except curses.error:
             pass
