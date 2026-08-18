@@ -1,16 +1,13 @@
-*This project has been created as part of the 42 curriculum by <pamohamm>, <pidi>.*
+*This project has been created as part of the 42 curriculum by pamohamm, pidi.*
 
 # A-Maze-ing
 
 ## Description
 
 A-Maze-ing is a Python maze generator, solver, file exporter, and terminal visualizer.
-The program reads a configuration file, generates either a perfect maze or a playable
-non-perfect maze, finds a shortest path from entry to exit, writes the maze using the
-required hexadecimal wall encoding, and displays it interactively in the terminal.
+The program reads a configuration file, generates either a perfect maze or a (playable) non-perfect maze, finds a shortest path from entry to exit, writes the maze using the required hexadecimal wall encoding, and displays it interactively in the terminal.
 
-The maze contains a visible `42` pattern made from fully closed cells whenever the maze
-is large enough to place it without breaking connectivity.
+The maze contains a visible `42` pattern made from fully closed cells whenever the maze is large enough to place it without breaking connectivity.
 
 ## Instructions
 
