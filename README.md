@@ -122,8 +122,7 @@ The returned solution is a string made from `N`, `E`, `S`, and `W` directions.
 
 ## Output format
 
-Each maze cell is written as one hexadecimal digit. Its four low bits represent closed
-walls:
+Each maze cell is written as one hexadecimal digit. Its four low bits represent closed walls:
 
 | Bit | Direction |
 | --- | --- |
@@ -132,10 +131,9 @@ walls:
 | 2 | South |
 | 3 | West |
 
-A set bit means the wall is closed; a cleared bit means it is open. Cells are written
-row by row, with one maze row per line.
+A set bit means the wall is closed; a cleared bit means it is open. Cells are written row by row, with one maze row per line.
 
-After an empty line, the output contains:
+After the hex has is an empty line followed by the info:
 
 1. entry coordinates,
 2. exit coordinates,
@@ -162,7 +160,7 @@ The reusable part of the project is the maze generation and solving package unde
 `src/mazegen/`. After installation, its public API can be imported directly from
 `mazegen`.
 
-### Basic example
+### Import and use the classes
 
 ```python
 from mazegen import Maze
@@ -179,33 +177,27 @@ maze = Maze(
 maze.generate()
 
 grid = maze.get_grid()
+
 solution = maze.solve()
 ```
 
-`width` and `height` set the maze size. `myseed` controls reproducibility. `entry` and
-`exitt` are `(x, y)` coordinates, and `perfect` selects the generation mode.
+`width` and `height` set the maze size. `myseed` controls reproducibility. `entry` and `exitt` are `(x, y)` coordinates, and `perfect` selects the generation mode.
 
-`get_grid()` returns the generated structure as a two-dimensional list of integer wall
-values. `solve()` returns a shortest valid path as a string of direction characters.
+`get_grid()` returns the generated structure as a two-dimensional list of integer wall values. `solve()` returns a shortest valid solution path as a string of direction characters.
 
 ## Team and project management
 
 ### Roles
 
-- **Parvin Ghasemi** - primary work on configuration parsing, output handling, testing,
-  integration, and visualizer improvements.
-- **Parvin Diyanati** - primary work on maze generation, solving, interactive
-  visualization, and integration.
+- **Parvin Ghasemi** - primary work on configuration parsing, output handling, testing, integration, and visualizer, .toml file, improvements.
+- **Parvin Diyanati** - primary work on maze generation, testing, visualization, packaging, and integration.
 
-Both members worked on integration, debugging, review, and final project compliance.
+Both members worked on debugging, review, and final project compliance.
 
 ### Planning and evolution
 
 The project began with separate work on parsing, maze generation, solving, and output.
-As the modules were integrated, work shifted toward validating interactions between them,
-meeting the perfect/non-perfect maze constraints, improving the terminal visualizer, and
-adding regression tests. The final phase focused on edge cases, packaging, linting,
-licensing, and documentation.
+As the modules were integrated, work shifted toward validating interactions between them, meeting the perfect/non-perfect maze constraints, improving the terminal visualizer, and adding regression tests. The final phase focused on edge cases, packaging, linting, licensing, and documentation.
 
 ### What worked well
 
