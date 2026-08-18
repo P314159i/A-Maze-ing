@@ -113,21 +113,7 @@ coordinates, and invalid dimensions are rejected with a clear configuration erro
 
 ## Maze generation algorithm
 
-The generator uses a randomized depth-first search with backtracking. It starts from the
-configured entry cell, repeatedly visits an unvisited neighbouring cell, opens the wall
-between the two cells, and backtracks when no unvisited neighbour remains.
-
-This algorithm was chosen because it naturally creates a connected spanning tree. That
-makes it a direct fit for `PERFECT=True`, where the maze must contain no loops and
-therefore has exactly one route between any two reachable corridor cells. A dedicated
-`random.Random` instance allows the same seed and parameters to reproduce the same
-maze.
-
-Before carving, the generator reserves fully closed cells for the `42` pattern when a
-safe placement exists. For `PERFECT=False`, additional passages are opened after the
-base maze is generated. The generator validates that the resulting board stays
-connected, avoids 3x3 open areas, contains at least two independent loops and multiple
-entry-to-exit routes, and keeps the required corner and centre areas usable.
+The generator uses a randomized depth-first search with backtracking. It starts from the configured entry cell, repeatedly visits an unvisited neighbouring cell, opens the wall between the two cells, and backtracks when no unvisited neighbour remains.  This algorithm was chosen because it naturally creates a connected spanning tree. That makes it a direct fit for `PERFECT=True`, where the maze must contain no loops and therefore has exactly one route between any two reachable corridor cells. A dedicated `random.Random` instance allows the same seed and parameters to reproduce the same maze.  Before carving, the generator reserves fully closed cells for the `42` pattern when a safe placement exists. For `PERFECT=False`, additional passages are opened after the base maze is generated. The generator validates that the resulting board stays connected, avoids 3x3 open areas, contains at least two independent loops and multiple entry-to-exit routes, and keeps the required corner and centre areas usable.
 
 ## Solver
 
